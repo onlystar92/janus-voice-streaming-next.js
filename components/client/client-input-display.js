@@ -23,7 +23,7 @@ const ClientInputDisplay = ({ className, client, variant }) => {
 					[className]: !isMuted,
 					"text-primary-text bg-red-500": isMuted,
 				},
-				"p-2 rounded-full transition-all duration-200 ease-out focus:outline-none active:outline-none",
+				"p-2 rounded-full transition-all duration-200 ease-out outline-none focus:outline-none",
 				"md:p-2 lg:p-3",
 			)}
 			onClick={handleToggle}
