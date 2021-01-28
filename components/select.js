@@ -91,9 +91,9 @@ const Select = memo(({ className, values }) => {
 		>
 			<div
 				className={clsx(
-					"p-2 flex items-center justify-between bg-secondary-100 text-accent-text border-2 border-solid border-secondary-100",
+					"p-2 flex items-center justify-between border-2 border-solid border-secondary-100 bg-secondary-100 text-accent-text",
 					{
-						"rounded-md hover:border-accent-text": !open,
+						"rounded-md transition-colors duration-150 hover:border-accent-text": !open,
 						"rounded-t-md border-b-0 border-accent-text shadow-md": open,
 					},
 				)}
