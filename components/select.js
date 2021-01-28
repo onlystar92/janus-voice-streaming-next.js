@@ -84,25 +84,29 @@ const Select = memo(({ className, values }) => {
 	}
 
 	return (
-		<div className={clsx(className, "relative cursor-default")} ref={selector} onClick={handleOpen}>
+		<div
+			className={clsx(className, "relative cursor-default  transition-all duration-75")}
+			ref={selector}
+			onClick={handleOpen}
+		>
 			<div
 				className={clsx(
-					"p-2 border-2 border-b-0 border-secondary-100 flex items-center justify-between transition-all duration-75 bg-secondary-100 text-accent-text",
+					"p-2 flex items-center justify-between bg-secondary-100 text-accent-text border-2 border-solid border-secondary-100",
 					{
-						"rounded-md": !open,
-						"rounded-t-md border-accent-text": open,
+						"rounded-md hover:border-accent-text": !open,
+						"rounded-t-md border-b-0 border-accent-text shadow-md": open,
 					},
 				)}
 			>
-				<span>{active}</span>
-				<ChevronDown className="w-5 h-5 cursor-pointer transition-opacity duration-75 opacity-50 hover:opacity-100" />
+				<span className="truncate">{active}</span>
+				<ChevronDown className="w-6 h-6 cursor-pointer transition-opacity duration-150 opacity-50 hover:opacity-100" />
 			</div>
 			<OptionList
 				className={clsx(
-					"absolute border-2 border-t-0 border-secondary-100 rounded-b-md w-full transition-all duration-75 overflow-hidden z-20",
+					"absolute border-l-2 border-r-2 border-b-2 rounded-b-md border-accent-text w-full transition-all duration-150 overflow-hidden z-20",
 					{
-						"max-h-0": !open,
-						"max-h-screen border-accent-text ": open,
+						"max-h-0 border-opacity-0": !open,
+						"max-h-screen shadow-md": open,
 					},
 				)}
 				values={values}
