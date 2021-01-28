@@ -4,7 +4,7 @@ import Settings from "@icons/Settings"
 import SettingsModal from "@components/settings-modal"
 
 const SettingsButton = forwardRef(({ open, onClick }, ref) => (
-	<div ref={ref} className="relative z-50">
+	<div ref={ref} className="relative">
 		<button className="focus:outline-none" onClick={onClick} aria-label="Settings">
 			<Settings className="text-white w-6 h-6 sm:h-6" />
 		</button>
@@ -12,8 +12,8 @@ const SettingsButton = forwardRef(({ open, onClick }, ref) => (
 			className={clsx(
 				"absolute w-96 top-8 -right-3 origin-center transform-gpu transition-all duration-200",
 				{
-					"opacity-0 scale-75": !open,
-					"opacity-100": open,
+					"opacity-0 scale-75 z-0": !open,
+					"opacity-100 z-20": open,
 				},
 			)}
 		>

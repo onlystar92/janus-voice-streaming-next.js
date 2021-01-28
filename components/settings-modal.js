@@ -1,7 +1,6 @@
 import Slider from "@components/slider"
 import Select from "@components/select"
-import { useEffect, useMemo, useState } from "react"
-import clsx from "clsx"
+import { useEffect, useState } from "react"
 import NavigationArrow from "icons/NavigationArrow"
 
 const findMediaDevicesByKind = async kind => {

@@ -84,16 +84,12 @@ const Select = memo(({ className, values }) => {
 	}
 
 	return (
-		<div
-			className={clsx(className, "relative cursor-default  transition-all duration-75")}
-			ref={selector}
-			onClick={handleOpen}
-		>
+		<div className={clsx(className, "relative cursor-default")} ref={selector} onClick={handleOpen}>
 			<div
 				className={clsx(
 					"p-2 flex items-center justify-between border-2 border-solid border-secondary-100 bg-secondary-100 text-accent-text",
 					{
-						"rounded-md transition-colors duration-150 hover:border-accent-text": !open,
+						"rounded-md hover:border-accent-text": !open,
 						"rounded-t-md border-b-0 border-accent-text shadow-md": open,
 					},
 				)}
@@ -103,7 +99,7 @@ const Select = memo(({ className, values }) => {
 			</div>
 			<OptionList
 				className={clsx(
-					"absolute border-l-2 border-r-2 border-b-2 rounded-b-md border-accent-text w-full transition-all duration-150 overflow-hidden z-20",
+					"absolute border-l-2 border-r-2 border-b-2 rounded-b-md border-accent-text w-full overflow-hidden z-10",
 					{
 						"max-h-0 border-opacity-0": !open,
 						"max-h-screen shadow-md": open,

@@ -88,7 +88,7 @@ const clientStore = ClientStore.create({
 		{
 			id: "3456364363463",
 			name: "Axel",
-			image: "/boba.png",
+			image: "/axel.png",
 			status: "Rest",
 			volume: 100,
 		},
