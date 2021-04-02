@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "next dev",
+		"dev": "next dev -H 127.0.0.1",
 		"build": "next build",
 		"start": "next start"
 	},
@@ -11,7 +11,9 @@
 		"autoprefixer": "^10.2.3",
 		"babel-plugin-module-resolver": "^4.1.0",
 		"clsx": "^1.1.1",
+		"cookies": "^0.8.0",
 		"global": "^4.4.0",
+		"janus-videoroom-client": "^4.2.1",
 		"mobx": "^6.0.5",
 		"mobx-react-lite": "2.2.2",
 		"mobx-state-tree": "^5.0.0",

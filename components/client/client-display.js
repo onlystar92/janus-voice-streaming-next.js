@@ -5,6 +5,7 @@ import MicrophoneMuted from "@icons/MicrophoneMuted"
 import Volume from "@icons/Volume"
 import VolumeMuted from "icons/VolumeMuted"
 import { observer } from "mobx-react-lite"
+import { useRef } from "react"
 
 const variants = {
 	self: {
@@ -20,6 +21,7 @@ const variants = {
 }
 
 const ClientDisplay = ({ className, client, variant = "other" }) => {
+	const audioRef = useRef()
 	const activeVariant = variants[variant] ?? variants.other
 	const variantStyles = clsx("tracking-wide", activeVariant.className)
 	return (
@@ -30,6 +32,7 @@ const ClientDisplay = ({ className, client, variant = "other" }) => {
 				"lg:px-4",
 			)}
 		>
+			<audio className="hidden" ref={audioRef} />
 			<div className="flex items-center">
 				<img className="w-8 h-auto lg:w-14" src={client.image} />
 				<span

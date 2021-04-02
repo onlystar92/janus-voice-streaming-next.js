@@ -2,8 +2,6 @@ import React from "react"
 import clsx from "clsx"
 import { observer } from "mobx-react-lite"
 
-React.useLayoutEffect = React.useEffect
-
 const ClientInputDisplay = ({ className, client, variant }) => {
 	const isMuted = client.status === "Muted"
 	const Icon = isMuted ? variant.mutedIcon : variant.icon
