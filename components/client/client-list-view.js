@@ -1,17 +1,22 @@
 import { observer } from "mobx-react-lite"
-import { memo } from "react"
-import clientStore from "@stores/ClientStore"
+import clsx from "clsx"
 import ClientDisplay from "./client-display"
 
-const renderRow = (client, _index) => {
-	const variant = client.name === "C0uch" ? "self" : "other"
+function ClientListView({ clients }) {
 	return (
-		<ClientDisplay className="mt-2 z-10 sm:m-0" key={client.id} client={client} variant={variant} />
+		<div
+			className={clsx(
+				"px-6 py-4 min-h-screen  flex flex-col items-stretch",
+				"sm:grid sm:grid-cols-2 sm:items-start sm:gap-y-2 sm:gap-x-2",
+				"md:grid-cols-2 md:gap-y-2 md:gap-x-2 md:py-6",
+				"lg:px-12 lg:grid-cols-3 lg:gap-y-3 lg:gap-x-10 lg:py-10",
+			)}
+		>
+			{clients.map((client, _index) => (
+				<ClientDisplay key={client.id} client={client} />
+			))}
+		</div>
 	)
 }
 
-const ClientListView = ({ className }) => {
-	return <div className={className}>{clientStore.clients.map(renderRow)}</div>
-}
-
-export default memo(observer(ClientListView))
+export default observer(ClientListView)

@@ -10,8 +10,7 @@ export default async function handler(req, res) {
 	const cookies = new Cookies(req, res)
 
 	function handleSuccess(response) {
-		const { player, token, room = -1 } = response.data
-		const session = { player, token, room }
+		const session = response.data
 
 		// Set session cookie
 		console.info("Assigning cookie")

@@ -2,6 +2,9 @@ import Slider from "@components/slider"
 import Select from "@components/select"
 import { useEffect, useState } from "react"
 import NavigationArrow from "icons/NavigationArrow"
+import { observer } from "mobx-react-lite"
+import { userStore } from "stores/User"
+import * as R from "ramda"
 
 const findMediaDevicesByKind = async kind => {
 	if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -16,31 +19,50 @@ const findMediaDevicesByKind = async kind => {
 	return devices.filter(device => device.kind === kind)
 }
 
-const getAudioInputDevices = async () => {
+async function findInputDevices() {
 	const inputDevices = await findMediaDevicesByKind("audioinput")
-	return inputDevices.map(device => device.label)
+	return R.pluck("label", inputDevices)
 }
 
-const getAudioOutputDevices = async () => {
+async function findOutputDevices() {
 	const outputDevices = await findMediaDevicesByKind("audiooutput")
-	return outputDevices.map(device => device.label)
+	return R.pluck("label", outputDevices)
 }
 
-const Divider = () => <div className="mt-2 border border-solid border-primary-100 rounded-lg" />
+function Divider() {
+	return <div className="mt-2 border border-solid border-primary-100 rounded-lg" />
+}
 
-const SettingsModal = ({ className }) => {
-	const [audioDevices, setAudioDevices] = useState({ input: [], output: [] })
+function SettingsModal() {
+	const [inputDevices, setInputDevices] = useState(["Default"])
+	const [outputDevices, setOutputDevices] = useState(["Default"])
 
 	useEffect(() => {
-		const fetchAudioDevices = async () => {
-			setAudioDevices({
-				input: await getAudioInputDevices(),
-				output: await getAudioOutputDevices(),
-			})
+		async function fetchAudioDevices() {
+			const foundInputs = await findInputDevices()
+			const foundOutputs = await findOutputDevices()
+			setInputDevices([...inputDevices, ...foundInputs])
+			setOutputDevices([...outputDevices, ...foundOutputs])
 		}
 
 		fetchAudioDevices()
 	}, [])
+
+	function handleOutputVolumeChange(volume) {
+		userStore.settings.setOutputVolume(volume)
+	}
+
+	function handleInputVolumeChange(volume) {
+		userStore.settings.setInputVolume(volume)
+	}
+
+	function handleInputSelect(input) {
+		userStore.settings.setPreferredInput(input)
+	}
+
+	function handleOutputSelect(output) {
+		userStore.settings.setPreferredOutput(output)
+	}
 
 	return (
 		<div className="relative top-4">
@@ -51,19 +73,29 @@ const SettingsModal = ({ className }) => {
 				<div className="flex flex-col font-semibold">
 					<div className="mt-4">
 						<span>Master Volume</span>
-						<Slider className="mt-2" />
+						<Slider className="mt-2" onChange={handleOutputVolumeChange} />
 					</div>
 					<div className="mt-4">
 						<span>Input Volume</span>
-						<Slider className="mt-2" />
+						<Slider className="mt-2" onChange={handleInputVolumeChange} />
 					</div>
 					<div className="mt-4">
 						<span>Output Device</span>
-						<Select className="mt-2" values={audioDevices.output} />
+						<Select
+							className="mt-2"
+							selected={userStore?.settings?.preferredOutput ?? outputDevices[0]}
+							values={outputDevices}
+							onSelect={handleOutputSelect}
+						/>
 					</div>
 					<div className="mt-4">
 						<span>Input Device</span>
-						<Select className="mt-2" values={audioDevices.input} />
+						<Select
+							className="mt-2"
+							selected={userStore?.settings?.preferredInput ?? inputDevices[0]}
+							values={inputDevices}
+							onSelect={handleInputSelect}
+						/>
 					</div>
 				</div>
 			</div>
@@ -71,4 +103,4 @@ const SettingsModal = ({ className }) => {
 	)
 }
 
-export default SettingsModal
+export default observer(SettingsModal)

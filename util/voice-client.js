@@ -1,99 +1,113 @@
-import User from "./user"
-import VideoRoom from "./video-room"
+import * as R from "ramda"
+import clientStore, { Client } from "stores/ClientStore"
+import { userStore } from "stores/User"
+import { executeIfPresent } from "./callback"
+import { publishAudioTracks, listenFeed, getFeedsExcept, listParticipants } from "./video-room"
 
-function notInList(list) {
-	return item => list.indexOf(item) === -1
+function publishClientMedia(room) {
+	return new Promise(async (resolve, reject) => {
+		const { id, onConnect, onDisconnect } = await publishAudioTracks(room)
+
+		// Handle connect
+		onConnect(() => {
+			console.info("Assigned publisher id:", id)
+			userStore.session.setPublisherId(id)
+
+			// Add client
+			const client = new Client(id, userStore.username)
+			clientStore.addClient(client)
+			resolve()
+		})
+
+		// Handle client disconnect
+		onDisconnect(() => {
+			userStore.session.setPublisherId(null)
+
+			// Remove client
+			if (clientStore.contains(id)) {
+				const client = clientStore.getClient(id)
+				clientStore.removeClient(client)
+			}
+
+			// Reject promise
+			reject()
+		})
+	})
 }
 
-class VoiceClient {
-	constructor(token, room) {
-		this.token = token
-		this.room = room
-		this.user = new User(token)
-		this.listening = []
-	}
+async function listenToNewFeeds(
+	room,
+	onClientConnected,
+	onClientDisconnected,
+	onConnectionClose,
+	onStreamReceived,
+) {
+	const feeds = await getFeedsExcept(room, userStore.session.publisherId)
 
-	async connect() {
-		console.info("Connecting client to janus...")
-		await this.user.getClient().connect()
-	}
-
-	async publishUserMedia(room) {
-		if (!this.hasSession()) {
-			throw new Error("The client needs to be connected before publishing media")
-		}
-
-		console.info("Publishing feed...")
-		const videoRoom = await this.getVideoRoom(room)
-		const feed = await videoRoom.publishFeed(this.token)
-
-		if (!feed) {
-			console.error(`Failed to publish feed to room ${room}`)
-			return
-		}
-
-		this.publisherSession = { id: feed.response.id, connection: feed.connection }
-	}
-
-	async listenToFeeds(room) {
-		const feeds = await this.getFeeds(room)
-		const publisherId = this.publisherSession.id
-		const listening = publisherId ? [publisherId, ...this.listening] : this.listening
-		const notListening = notInList(listening)
-
-		// Listen to new feeds in room not being listened to
-		feeds.filter(notListening).forEach(feed => this.listenToFeed(room, feed))
-
-		// Recursively call every second
-		setTimeout(() => this.listenToFeeds(room), 2000)
-	}
-
-	async listenToFeed(room, feed) {
-		if (!this.hasSession()) {
-			throw new Error("The client needs to be connected before subscribing to publishers")
-		}
-
-		const videoRoom = await this.getVideoRoom(room)
-		const feedHandler = await videoRoom.listenFeed(feed, this.onTrack)
-
-		feedHandler.onConnected(() => {
-			console.info("Peer connected")
-			this.listening.push(feed)
+	// Listen to all new feeds
+	feeds
+		.filter(feed => R.not(clientStore.contains(feed)))
+		.forEach(async feed => {
+			console.info("Listening to new feed:", feed)
+			await listenToFeed(
+				room,
+				feed,
+				onClientConnected,
+				onClientDisconnected,
+				onConnectionClose,
+				onStreamReceived,
+			)
 		})
 
-		feedHandler.onDisconnect(() => {
-			console.info("Peer disconnected")
-		})
-
-		feedHandler.onClosed(() => {
-			console.info("Connection closed")
-			this.listening = this.listening.filter(listening => listening !== feed)
-		})
-	}
-
-	async getVideoRoom(room) {
-		if (!this.hasSession()) {
-			throw new Error("The client needs to be connected before retreiving a room")
-		}
-
-		return new VideoRoom(this.user.getSession(), room)
-	}
-
-	async getFeeds(room) {
-		return await this.user.getSession().videoRoom().getFeeds(room)
-	}
-
-	hasSession() {
-		return this.user.getSession() !== null
-	}
-
-	onConnectSuccess(callback) {
-		this.user.getClient().onConnectSuccess(callback)
-	}
-
-	onStreamReceived(callback) {
-		this.onTrack = callback
-	}
+	// Recursively call method after 5s
+	setTimeout(
+		() =>
+			listenToNewFeeds(
+				room,
+				onClientConnected,
+				onClientDisconnected,
+				onConnectionClose,
+				onStreamReceived,
+			),
+		5000,
+	)
 }
 
-export default VoiceClient
+async function listenToFeed(
+	room,
+	feed,
+	onClientConnected,
+	onClientDisconnected,
+	onConnectionClose,
+	onStreamReceived,
+) {
+	const streamHandler = event => onStreamReceived(feed, event)
+	const listenHandle = await listenFeed(room, feed, streamHandler)
+
+	listenHandle.onConnect(async event => {
+		console.info("Finding feed", feed, "in room")
+		const listResponse = await listParticipants(room)
+		const participant = listResponse.participants.find(R.propEq("id", feed))
+
+		// Add client
+		const client = new Client(participant.id, participant.display)
+		clientStore.addClient(client)
+
+		// Execute callback
+		await executeIfPresent(onClientConnected, [feed, event])
+	})
+
+	listenHandle.onDisconnect(async event => {
+		const client = clientStore.getClient(feed)
+		clientStore.removeClient(client)
+
+		await executeIfPresent(onClientDisconnected, [feed, event])
+	})
+
+	listenHandle.onClose(async event => {
+		console.info("Connection closed")
+		await executeIfPresent(onConnectionClose, [feed, event])
+	})
+}
+
+export { publishClientMedia, listenToFeed, listenToNewFeeds }

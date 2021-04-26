@@ -1,6 +1,6 @@
 import { useRouter } from "next/router"
 import { observer } from "mobx-react-lite"
-import { initializeStore, saveCurrentSnapshot } from "stores/UserStore"
+import { initializeStore, saveCurrentUser } from "stores/User"
 
 async function loginClient(token) {
 	const response = await fetch("/api/login", {
@@ -45,13 +45,9 @@ function Login() {
 		}
 
 		// Initialize user using login response
-		const initialState = {
-			token: loginResponse.token,
-			username: loginResponse.player,
-			room: parseInt(loginResponse.room ?? -1),
-		}
-		initializeStore(initialState)
-		saveCurrentSnapshot()
+		const parsedRoom = loginResponse.room ? parseInt(loginResponse.room) : null
+		initializeStore(loginResponse.token, loginResponse.player, parsedRoom)
+		await saveCurrentUser()
 
 		// Push to home
 		router.push("/")

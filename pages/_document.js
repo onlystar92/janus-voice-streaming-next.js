@@ -19,7 +19,7 @@ class MyDocument extends Document {
 				<meta name="theme-color" content="#252e7b" />
 				<link rel="preconnect" href="https://fonts.gstatic.com" />
 				<link
-					href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap"
+					href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700"
 					rel="stylesheet"
 				/>
 				<body className="scrollbar-w-2 scrollbar scrollbar-thumb-primary-text scrollbar-track-primary-100 scrollbar-thumb-rounded-full">
