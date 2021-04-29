@@ -86,6 +86,10 @@ function ClientDisplay({ client }) {
 				return
 			}
 
+			if (!audioRef.current.setSinkId) {
+				return
+			}
+
 			let device = await findDeviceIdByName(preferredOutput)
 
 			if (!device || !device.deviceId) {
