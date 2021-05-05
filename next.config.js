@@ -1,6 +1,9 @@
 const { NormalModuleReplacementPlugin } = require("webpack")
 
 module.exports = {
+	future: {
+		webpack5: true,
+	},
 	poweredByHeader: false,
 	webpack: config => {
 		config.plugins = config.plugins || []

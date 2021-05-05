@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import ChevronDown from "@icons/ChevronDown"
+import ChevronDown from "icons/ChevronDown"
 import clsx from "clsx"
 
 const Option = ({ value, onClick, isSelected, isLast }) => (
@@ -74,7 +74,7 @@ const Select = ({ className, values, selected, onSelect }) => {
 		<div className={clsx(className, "relative cursor-default")} ref={selector} onClick={handleOpen}>
 			<div
 				className={clsx(
-					"p-2 flex items-center justify-between border-2 border-solid border-transparent transition-colors duration-100 bg-secondary-100 text-accent-text",
+					"p-2 flex items-center justify-between border-2 border-solid border-transparent transition-colors duration-150 bg-secondary-100 text-accent-text",
 					{
 						"rounded-md hover:border-primary-300": !open,
 						"rounded-t-md border-primary-300 shadow-md": open,

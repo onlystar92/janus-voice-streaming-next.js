@@ -1,5 +1,5 @@
-import Slider from "@components/slider"
-import Select from "@components/select"
+import Slider from "components/slider"
+import Select from "components/select"
 import { useEffect, useState } from "react"
 import NavigationArrow from "icons/NavigationArrow"
 import { observer } from "mobx-react-lite"
@@ -95,17 +95,29 @@ function SettingsModal() {
 	return (
 		<div className="relative top-4">
 			<NavigationArrow className="absolute h-8 w-8 -top-4 right-2 fill-current text-secondary-300" />
-			<div className="p-4 text-primary-text bg-secondary-300 rounded-xl">
+			<div className="p-4 text-primary-text bg-secondary-300 rounded-xl select-none">
 				<span className="text-2xl font-bold">Audio Settings</span>
 				<Divider />
 				<div className="flex flex-col font-semibold">
 					<div className="mt-4">
 						<span>Master Volume</span>
-						<Slider className="mt-2" onChange={handleOutputVolumeChange} />
+						<Slider
+							className="mt-2"
+							initial={100}
+							min={0}
+							max={100}
+							onChange={handleOutputVolumeChange}
+						/>
 					</div>
 					<div className="mt-4">
 						<span>Input Volume</span>
-						<Slider className="mt-2" onChange={handleInputVolumeChange} />
+						<Slider
+							className="mt-2"
+							initial={100}
+							min={0}
+							max={100}
+							onChange={handleInputVolumeChange}
+						/>
 					</div>
 					<div className="mt-4">
 						<span>Output Device</span>

@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useRef, useState } from "react"
 import clsx from "clsx"
-import Settings from "@icons/Settings"
-import SettingsModal from "@components/settings-modal"
+import Settings from "icons/Settings"
+import SettingsModal from "components/settings-modal"
 import { observer } from "mobx-react-lite"
 
 const SettingsButton = forwardRef(({ open, onClick }, ref) => (
@@ -11,7 +11,7 @@ const SettingsButton = forwardRef(({ open, onClick }, ref) => (
 		</button>
 		<div
 			className={clsx(
-				"absolute w-96 top-8 -right-3 origin-center transform-gpu transition-all duration-200",
+				"absolute w-96 top-8 -right-3 origin-center transform-gpu transition-all duration-150",
 				{
 					"opacity-0 scale-75 z-0": !open,
 					"opacity-100 z-20": open,

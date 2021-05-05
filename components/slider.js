@@ -1,115 +1,145 @@
+import { forwardRef, useLayoutEffect, useRef } from "react"
 import clsx from "clsx"
-import Volume from "icons/Volume"
-import { forwardRef, useEffect, useRef, useState } from "react"
 
-/**
- * Maps the progress paramater from the minProgress-maxProgress range to the minValue-maxValue range
- * @param {*} progress value to map
- * @param {*} minProgress minimum value expected from the progress parameter
- * @param {*} maxProgress maximum value expected from the progress parameter
- * @param {*} minValue minimum value expected from mapping the progress
- * @param {*} maxValue maximum value expected from mapping the progress
- */
-const mapProgressToValue = (progress, minProgress, maxProgress, minValue, maxValue) => {
-	const leftSpan = maxProgress - minProgress
-	const rightSpan = maxValue - minValue
-	const valueScaled = parseFloat(progress - minValue) / parseFloat(leftSpan)
-	return valueScaled * rightSpan + minValue
+function calculatePercentage(current, min, max) {
+	return ((current - min) / (max - min)) * 100
 }
 
-/**
- * Calculates the progress based on the clientX parameter and the width of the thumbSlider
- * @param {*} clientX the current position in the x-axis of the client's mouse
- * @param {*} thumbSlider a reference to the thumb slider element
- */
-const calculateProgress = (clientX, thumbSlider) => {
-	const thumbSliderBound = thumbSlider.getBoundingClientRect()
-	const shiftX = clientX - thumbSliderBound.width
-	const leftMargin = thumbSliderBound.left - thumbSlider.offsetLeft
-	return thumbSliderBound.width + shiftX - leftMargin
+function calculateValue(percentage, min, max) {
+	return Math.round(((max - min) / 100) * percentage + min)
 }
 
-const Thumb = forwardRef(({ onMouseDown, progress }, ref) => (
+function calculateLeftMargin(percentage, width, minWidth = 0) {
+	return `max(calc(${percentage}% - ${width}), ${minWidth})`
+}
+
+function calculateWidth(percentage) {
+	return `${percentage}%`
+}
+
+const Header = forwardRef((_, ref) => (
 	<div
+		className="opacity-0 transform-gpu transition-opacity duration-75 ease-in absolute bg-primary-100 -top-8 px-2 text-md rounded-md shadow-lg select-none"
 		ref={ref}
-		className="absolute -mt-2 bg-secondary-200 right-0 rounded-full"
-		style={{ right: `${(1 - progress) * 100 < 91 ? (1 - progress) * 100 : 91}%` }}
-		onMouseDown={onMouseDown}
-	>
-		<Volume className="w-8 h-8 py-2" />
-	</div>
+	/>
 ))
 
-const ThumbSlider = forwardRef(({ progress, children }, ref) => (
+const ProgressContainer = forwardRef(({ onMouseDown, children }, ref) => (
 	<div
 		ref={ref}
-		className="absolute w-full h-4 bg-primary-100 rounded-full cursor-ew-resize"
-		style={{ width: `${progress * 100}%` }}
+		className="h-4 bg-white bg-opacity-60 rounded-full overflow-hidden"
+		onMouseDown={onMouseDown}
 	>
 		{children}
 	</div>
 ))
 
-const Slider = ({ className, onChange, defaultValue = 0, min = 0, max = 1 }) => {
-	const [value, setValue] = useState(defaultValue)
-	const thumb = useRef()
-	const thumbSlider = useRef()
-	const slider = useRef()
+const Progress = forwardRef(({ onMouseDown }, ref) => (
+	<div
+		ref={ref}
+		className="h-4 bg-primary-100 rounded-full absolute w-full"
+		onMouseDown={onMouseDown}
+	/>
+))
 
-	const handleSliderMouseDown = event => {
+const Thumb = forwardRef(({ onMouseDown }, ref) => (
+	<div
+		ref={ref}
+		className="absolute w-2 h-6 bg-white rounded-full -top-1/4 cursor-ew-resize"
+		onMouseDown={onMouseDown}
+	/>
+))
+
+const Slider = forwardRef(({ className, initial, min, max, thumb, onChange }, ref) => {
+	const initialPercentage = calculatePercentage(initial, min, max)
+	const rangeRef = useRef()
+	const rangeProgressRef = useRef()
+	const thumbRef = useRef()
+	const currentRef = useRef()
+	const diff = useRef()
+
+	useLayoutEffect(() => {
+		handleUpdate(initial, initialPercentage)
+	}, [initial, initialPercentage, handleUpdate])
+
+	function handleUpdate(value, percentage) {
+		if (thumb) {
+			thumbRef.current.style.left = calculateLeftMargin(percentage, "8px", "0px")
+		}
+		rangeProgressRef.current.style.width = calculateWidth(percentage)
+
+		if (currentRef.current) {
+			const halfOfWidth = currentRef.current.getBoundingClientRect().width / 2
+			const width = `${halfOfWidth}px - 4px`
+			const minWidth = `-${halfOfWidth}px + 4px`
+			currentRef.current.style.left = calculateLeftMargin(percentage, width, minWidth)
+			currentRef.current.textContent = `${value}%`
+		}
+	}
+
+	function handleMouseMove(event) {
+		let end = rangeRef.current.offsetWidth
+		let differenceX = event.clientX - rangeRef.current.getBoundingClientRect().left
+
+		if (thumb) {
+			end -= thumbRef.current.offsetWidth
+			differenceX -= diff.current
+		}
+
+		const newX = Math.min(Math.max(differenceX, 0), end)
+		const newPercentage = calculatePercentage(newX, 0, end)
+		const newValue = calculateValue(newPercentage, min, max)
+
+		// Update visuals
+		handleUpdate(newValue, newPercentage)
+
+		// Notify of new value
+		onChange(newValue)
+	}
+
+	function handleProgressClick(event) {
+		diff.current = 0
 		handleMouseMove(event)
 		handleMouseDown(event)
 	}
 
-	const handleMouseDown = event => {
-		event.preventDefault()
-
-		// Add event listeners
-		document.addEventListener("mousemove", handleMouseMove)
-		document.addEventListener("mouseup", handleMouseUp)
-	}
-
-	const handleMouseMove = event => {
-		const maxProgress = slider.current.offsetWidth
-		const minProgress = thumb.current.getBoundingClientRect().width
-		const newProgress = calculateProgress(event.clientX, thumbSlider.current)
-		let value = mapProgressToValue(newProgress, minProgress, maxProgress, min, max)
-
-		if (value < min) value = 0
-		else if (value > max) value = 1
-
-		// Set newly calculated value
-		setValue(value)
-
-		if (!onChange) {
-			return
+	function handleMouseDown(event) {
+		if (thumb) {
+			diff.current = event.clientX - thumbRef.current.getBoundingClientRect().left
 		}
 
-		onChange(value)
+		// Register listeners
+		document.addEventListener("mousemove", handleMouseMove)
+		document.addEventListener("mouseup", handleMouseUp)
+
+		// Show tooltip
+		currentRef.current.style.opacity = "100"
 	}
 
-	const handleMouseUp = () => {
+	function handleMouseUp() {
+		// Remove listeners
 		document.removeEventListener("mouseup", handleMouseUp)
 		document.removeEventListener("mousemove", handleMouseMove)
+
+		// Hilde tooltip
+		currentRef.current.style.opacity = "0"
 	}
 
-	useEffect(() => {
-		console.log(defaultValue, "8888888")
-		setValue(defaultValue)
-	}, [defaultValue])
-
 	return (
-		<div
-			ref={slider}
-			className={clsx(className, "h-4 bg-white bg-opacity-60 rounded-full cursor-ew-resize")}
-			onMouseDown={handleSliderMouseDown}
-		>
-			<div className="relative">
-				<ThumbSlider ref={thumbSlider} progress={value}></ThumbSlider>
-				<Thumb ref={thumb} onMouseDown={handleMouseDown} progress={value} />
-			</div>
+		<div ref={ref} className={clsx(className, "relative")}>
+			<Header ref={currentRef} />
+			<ProgressContainer ref={rangeRef} onMouseDown={handleProgressClick}>
+				<Progress ref={rangeProgressRef} onMouseDown={handleMouseDown} />
+			</ProgressContainer>
+			{thumb && <Thumb ref={thumbRef} onMouseDown={handleMouseDown} />}
 		</div>
 	)
+})
+
+Slider.defaultProps = {
+	min: 0,
+	thumb: true,
+	onChange: () => {},
 }
 
 export default Slider

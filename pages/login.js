@@ -61,12 +61,12 @@ function Login() {
 			>
 				<h1 className="text-primary-text font-bold text-2xl">Enter your username</h1>
 				<input
-					className="block w-full mt-4 px-2 py-1 transition-colors duration-250 border-none rounded-md bg-primary-100 text-lg placeholder-primary-text placeholder-opacity-40 bg-opacity-40 text-primary-text text-opacity-40 focus:ring-2 focus:ring-primary-100 focus:ring-opacity-90 focus:outline-none focus:text-primary-text focus:text-opacity-80"
+					className="block w-full mt-4 px-2 py-1 transition-colors duration-150 border-none rounded-md bg-primary-100 text-lg placeholder-primary-text placeholder-opacity-40 bg-opacity-40 text-primary-text text-opacity-40 focus:ring-2 focus:ring-primary-100 focus:ring-opacity-90 focus:outline-none focus:text-primary-text focus:text-opacity-80"
 					placeholder="username"
 					name="username"
 				/>
 				<button
-					className="p-2 mt-6 w-full transition-colors duration-250 bg-primary-100 uppercase text-primary-text text-sm tracking-wide font-bold rounded-md focus:outline-none hover:bg-primary-200"
+					className="p-2 mt-6 w-full transition-colors duration-150 bg-primary-100 uppercase text-primary-text text-sm tracking-wide font-bold rounded-md focus:outline-none hover:bg-primary-200"
 					type="submit"
 				>
 					Enter voice
