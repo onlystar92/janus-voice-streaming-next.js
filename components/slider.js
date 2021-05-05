@@ -1,6 +1,6 @@
 import clsx from "clsx"
 import Volume from "icons/Volume"
-import { forwardRef, useRef, useState } from "react"
+import { forwardRef, useEffect, useRef, useState } from "react"
 
 /**
  * Maps the progress paramater from the minProgress-maxProgress range to the minValue-maxValue range
@@ -29,10 +29,11 @@ const calculateProgress = (clientX, thumbSlider) => {
 	return thumbSliderBound.width + shiftX - leftMargin
 }
 
-const Thumb = forwardRef(({ onMouseDown }, ref) => (
+const Thumb = forwardRef(({ onMouseDown, progress }, ref) => (
 	<div
 		ref={ref}
 		className="absolute -mt-2 bg-secondary-200 right-0 rounded-full"
+		style={{ right: `${(1 - progress) * 100 < 91 ? (1 - progress) * 100 : 91}%` }}
 		onMouseDown={onMouseDown}
 	>
 		<Volume className="w-8 h-8 py-2" />
@@ -43,14 +44,14 @@ const ThumbSlider = forwardRef(({ progress, children }, ref) => (
 	<div
 		ref={ref}
 		className="absolute w-full h-4 bg-primary-100 rounded-full cursor-ew-resize"
-		style={{ width: `${progress}%` }}
+		style={{ width: `${progress * 100}%` }}
 	>
 		{children}
 	</div>
 ))
 
-const Slider = ({ className, onChange, min = 0, max = 1 }) => {
-	const [value, setValue] = useState()
+const Slider = ({ className, onChange, defaultValue = 0, min = 0, max = 1 }) => {
+	const [value, setValue] = useState(defaultValue)
 	const thumb = useRef()
 	const thumbSlider = useRef()
 	const slider = useRef()
@@ -72,7 +73,10 @@ const Slider = ({ className, onChange, min = 0, max = 1 }) => {
 		const maxProgress = slider.current.offsetWidth
 		const minProgress = thumb.current.getBoundingClientRect().width
 		const newProgress = calculateProgress(event.clientX, thumbSlider.current)
-		const value = mapProgressToValue(newProgress, minProgress, maxProgress, min, max)
+		let value = mapProgressToValue(newProgress, minProgress, maxProgress, min, max)
+
+		if (value < min) value = 0
+		else if (value > max) value = 1
 
 		// Set newly calculated value
 		setValue(value)
@@ -89,6 +93,11 @@ const Slider = ({ className, onChange, min = 0, max = 1 }) => {
 		document.removeEventListener("mousemove", handleMouseMove)
 	}
 
+	useEffect(() => {
+		console.log(defaultValue, "8888888")
+		setValue(defaultValue)
+	}, [defaultValue])
+
 	return (
 		<div
 			ref={slider}
@@ -97,7 +106,7 @@ const Slider = ({ className, onChange, min = 0, max = 1 }) => {
 		>
 			<div className="relative">
 				<ThumbSlider ref={thumbSlider} progress={value}></ThumbSlider>
-				<Thumb ref={thumb} onMouseDown={handleMouseDown} />
+				<Thumb ref={thumb} onMouseDown={handleMouseDown} progress={value} />
 			</div>
 		</div>
 	)

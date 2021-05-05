@@ -8,6 +8,7 @@ import Microphone from "icons/Microphone"
 import MicrophoneMuted from "icons/MicrophoneMuted"
 import Volume from "icons/Volume"
 import VolumeMuted from "icons/VolumeMuted"
+import hark from "hark"
 
 const clientTypes = {
 	self: {
@@ -38,6 +39,7 @@ function fetchUserAvatar(username) {
 function ClientAvatar({ client }) {
 	const { username } = client
 	const [avatar, setAvatar] = useState("/steve-avatar.png")
+	const [muted, setMuteStatus] = useState(false)
 
 	useEffect(() => {
 		async function resolveClientAvatar() {
@@ -54,12 +56,35 @@ function ClientAvatar({ client }) {
 		resolveClientAvatar()
 	}, [username])
 
-	return <img className="w-8 h-auto lg:w-14" src={avatar} alt={username + "'s avatar"} />
+	useEffect(() => {
+		return autorun(() => {
+			const stream = client.stream
+
+			if (!stream) {
+				return
+			}
+
+			stream.getTracks()[0].onmute = function () {
+				console.log("stream muted", "muted")
+			}
+
+			stream.getTracks()[0].onunmute = function () {
+				console.log("stream unmuted", "unmuted")
+			}
+		})
+	}, [])
+
+	return (
+		<div className="flex">
+			<img className="w-8 h-auto lg:w-14" src={avatar} alt={username + "'s avatar"} />
+		</div>
+	)
 }
 
 function ClientDisplay({ client }) {
 	const type = resolveType(client)
 	const audioRef = useRef()
+	const [isSpeaking, setIsSpeaking] = useState(false)
 
 	// Handle stream change
 	useEffect(() => {
@@ -119,6 +144,27 @@ function ClientDisplay({ client }) {
 		})
 	}, [])
 
+	useEffect(() => {
+		return autorun(() => {
+			const stream = client.stream
+
+			if (!audioRef.current || !stream) {
+				return
+			}
+
+			let options = {}
+			let speechEvents = hark(stream, options)
+
+			speechEvents.on("speaking", () => {
+				setIsSpeaking(true)
+			})
+
+			speechEvents.on("stopped_speaking", () => {
+				setIsSpeaking(false)
+			})
+		})
+	}, [])
+
 	return (
 		<>
 			<div
@@ -132,7 +178,7 @@ function ClientDisplay({ client }) {
 					<ClientAvatar client={client} />
 					<span
 						className={clsx(
-							type.className,
+							isSpeaking ? "bg-green-500" : type.className,
 							"px-2 py-1 ml-2",
 							"text-sm font-bold rounded-md",
 							"xl:px-4 xl:py-2",
