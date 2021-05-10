@@ -1,14 +1,11 @@
+import { useEffect, useState } from "react"
+import { observer } from "mobx-react-lite"
+import * as R from "ramda"
+import { userStore } from "stores/User"
 import Slider from "components/slider"
 import Select from "components/select"
-import { useEffect, useState } from "react"
 import NavigationArrow from "icons/NavigationArrow"
-import { observer } from "mobx-react-lite"
-import { userStore } from "stores/User"
-import * as R from "ramda"
-import AudioMeter from "../util/sound-meter"
-
-let meter = null
-let rafID = null
+import SensitivityIndicator from "./input-sensitivity"
 
 const findMediaDevicesByKind = async kind => {
 	if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -40,37 +37,13 @@ function Divider() {
 function SettingsModal() {
 	const [inputDevices, setInputDevices] = useState(["Default"])
 	const [outputDevices, setOutputDevices] = useState(["Default"])
-	const [sensitivity, setSensitivity] = useState(0)
-
-	const onLevelChange = () => {
-		setSensitivity(meter.volume)
-		rafID = window.requestAnimationFrame(onLevelChange)
-	}
 
 	useEffect(() => {
 		async function fetchAudioDevices() {
-			try {
-				window.AudioContext = window.AudioContext || window.webkitAudioContext
-				window.audioContext = new AudioContext()
-			} catch (e) {
-				alert("Web Audio API not supported.")
-			}
-
 			const foundInputs = await findInputDevices()
 			const foundOutputs = await findOutputDevices()
 			setInputDevices([...inputDevices, ...foundInputs])
 			setOutputDevices([...outputDevices, ...foundOutputs])
-
-			if (foundInputs) {
-				const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-				const mediaStreamSource = window.audioContext.createMediaStreamSource(stream)
-
-				// Create a new volume meter and connect it.
-				meter = AudioMeter(window.audioContext)
-				mediaStreamSource.connect(meter)
-
-				onLevelChange()
-			}
 		}
 
 		fetchAudioDevices()
@@ -144,7 +117,7 @@ function SettingsModal() {
 				<div className="flex flex-col font-semibold">
 					<div className="mt-4">
 						<span>Input Sensitivity</span>
-						<Slider className="mt-2" defaultValue={sensitivity * 100 * 1.4} />
+						<SensitivityIndicator />
 					</div>
 				</div>
 			</div>

@@ -22,7 +22,7 @@ class MyDocument extends Document {
 					href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700"
 					rel="stylesheet"
 				/>
-				<body className="scrollbar-w-2 scrollbar scrollbar-thumb-primary-text scrollbar-track-primary-100 scrollbar-thumb-rounded-full">
+				<body className="scrollbar-w-2 scrollbar-thin scrollbar-thumb-primary-text scrollbar-track-primary-300 scrollbar-thumb-rounded-full">
 					<Main />
 					<NextScript />
 				</body>
