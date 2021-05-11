@@ -1,7 +1,8 @@
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import Head from "next/head"
 import Footer from "components/footer"
 import Navigation from "components/navigation"
+import DebugStatus from "components/debug-status"
 import ClientListView from "components/client/client-list-view"
 import { publishClientMedia, listenToNewFeeds } from "util/voice-client"
 import { initializeStore, userStore, saveCurrentUser } from "stores/User"
@@ -121,6 +122,8 @@ function createVoiceClient(token) {
 }
 
 function Home() {
+	const [selfClient, setSelfClient] = useState(null)
+
 	useEffect(() => {
 		// Load user data
 		loadUserFromLocalStorage()
@@ -129,11 +132,19 @@ function Home() {
 		const client = createVoiceClient(userStore.token)
 		client.connect()
 
+		setSelfClient(client)
 		// Disconnect from client after effect
 		return () => {
 			client.disconnect()
 		}
 	}, [])
+
+	const closeSession = async () => {
+		if (selfClient) {
+			await selfClient.disconnect()
+			setSelfClient(null)
+		}
+	}
 
 	return (
 		<div>
@@ -144,6 +155,7 @@ function Home() {
 			<main className="bg-primary-100">
 				<Navigation />
 				<ClientListView clients={clientStore.clients} />
+				{selfClient && <DebugStatus closeSession={closeSession} />}
 				<Footer />
 			</main>
 		</div>
