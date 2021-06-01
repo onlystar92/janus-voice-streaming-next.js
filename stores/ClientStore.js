@@ -1,35 +1,44 @@
-import { action, makeAutoObservable } from "mobx"
+import { makeAutoObservable } from "mobx"
 import * as R from "ramda"
 
-// addClient :: (Client, [Client]) -> [Client]
-const addClient = (client, list) => R.append(client, list)
-
-// removeClient :: (Client, [Client]) -> [Client]
-const removeClient = (client, list) => R.filter(clientIdNotMatch(client.id), list)
-
-// clientIdNotMatch :: String -> Boolean
-const clientIdNotMatch = R.complement(R.propEq("id"))
+// clientUUIDNotMatch :: String -> Boolean
+const clientUUIDNotMatch = R.complement(R.propEq("uuid"))
 
 // notNull :: Any -> Boolean
 const notNull = R.complement(R.isNil)
 
 class Client {
-	id
+	uuid
 	username
 	volume
 	talking
 	stream
+	node
 
-	constructor(id, username, volume = 100, talking = false) {
-		this.id = id
-		this.username = username
+	constructor(volume = 100, talking = false) {
 		this.volume = volume
 		this.talking = talking
 		makeAutoObservable(this)
 	}
 
+	setUUID(uuid) {
+		this.uuid = uuid
+	}
+
+	setUsername(username) {
+		this.username = username
+	}
+
+	setRoom(room) {
+		this.room = room
+	}
+
 	setStream(stream) {
 		this.stream = stream
+	}
+
+	setNode(node) {
+		this.node = node
 	}
 
 	setVolume(voume) {
@@ -41,29 +50,27 @@ class ClientStore {
 	clients
 
 	constructor() {
-		makeAutoObservable(this)
 		this.clients = []
+		makeAutoObservable(this)
 	}
 
 	addClient(client) {
-		this.clients = addClient(client, this.clients)
+		this.clients = R.append(client, this.clients)
 	}
 
-	removeClient(client) {
-		this.clients = removeClient(client, this.clients)
+	removeClient(uuid) {
+		this.clients = R.filter(clientUUIDNotMatch(uuid), this.clients)
 	}
 
-	getClient(id) {
-		return this.clients.find(R.propEq("id", id))
+	findByUUID(uuid) {
+		return this.clients.find(R.propEq("uuid", uuid))
 	}
 
-	contains(id) {
-		const client = this.getClient(id)
-		return notNull(client)
+	contains(uuid) {
+		return notNull(this.findByUUID(uuid))
 	}
 }
 
 const clientStore = new ClientStore()
 export default clientStore
-
 export { Client }

@@ -13,7 +13,7 @@ function ClientListView({ clients }) {
 			)}
 		>
 			{clients.map((client, _index) => (
-				<ClientDisplay key={client.id} client={client} />
+				<ClientDisplay key={client.uuid} client={client} />
 			))}
 		</div>
 	)

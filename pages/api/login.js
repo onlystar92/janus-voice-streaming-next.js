@@ -1,8 +1,9 @@
 import Cookies from "cookies"
 
 async function loginClient(token) {
-	const response = await fetch(`https://api.godcomplex.org/debug/actions/login/${token}`)
-	return await response.json()
+	return await fetch(`https://api.godcomplex.org/actions/login/${token}`, {
+		credentials: "include",
+	})
 }
 
 export default async function handler(req, res) {
@@ -21,8 +22,8 @@ export default async function handler(req, res) {
 	}
 
 	function handleError(error) {
-		console.error(`An error ocurred while logging in using token ${token}:`, error)
-		res.status(500).json({ success: false, message: `Failed to login using token ${token}` })
+		console.error(`An error ocurred while logging in using token ${requestToken}:`, error)
+		res.status(500).json({ success: false, message: `Failed to login using token ${requestToken}` })
 	}
 
 	// Create magic token

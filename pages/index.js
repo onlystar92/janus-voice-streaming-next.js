@@ -1,150 +1,62 @@
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import Head from "next/head"
+import { observer } from "mobx-react-lite"
+import createJanusClient from "util/janus/janus-client"
+import userStore from "stores/User"
+import clientStore from "stores/ClientStore"
 import Footer from "components/footer"
 import Navigation from "components/navigation"
 import DebugStatus from "components/debug-status"
 import ClientListView from "components/client/client-list-view"
-import { publishClientMedia, listenToNewFeeds } from "util/voice-client"
-import { initializeStore, userStore, saveCurrentUser } from "stores/User"
-import { observer } from "mobx-react-lite"
-import clientStore from "stores/ClientStore"
-import { wrapVideoRoom } from "util/video-room"
-import createJanusClient from "util/janus-client"
-import { Session } from "stores/User"
 
-async function moveClientToRoom(room) {
-	const response = await fetch("/api/move", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({ room }),
-	})
-	return await response.json()
-}
+function createAudioContext() {
+	const audioContext = new AudioContext() || new webkitAudioContext()
 
-async function loadUserFromLocalStorage() {
-	return await new Promise(async resolve => {
-		if (userStore) {
-			console.info("Using already loaded user")
-			resolve()
-			return
-		}
-
-		console.info("Retreiving user from local storage")
-		const user = localStorage.getItem("user")
-
-		if (user) {
-			console.info("Initializing store with user:", user)
-			const response = JSON.parse(user)
-			const parsedRoom = response && response.room ? parseInt(response.room) : null
-			initializeStore(response.token, response.username, parsedRoom)
-		}
-
-		if (!user) {
-			console.info("No user available. Initializing empty store.")
-			initializeStore()
-			await saveCurrentUser()
-		}
-
-		resolve()
-	})
-}
-
-function handleClientConnected() {}
-
-function handleClientDisconnected() {}
-
-function handleConnectionClose() {}
-
-function handleStream(feed, { streams: [stream] }) {
-	console.info("Handling stream")
-
-	function insertStreamToClient(stream, id) {
-		const client = clientStore.getClient(id)
-		client.setStream(stream)
+	// Resume audio context if suspended
+	if (audioContext.state === "suspended") {
+		audioContext.resume()
 	}
 
-	function recursivelyInsertStream(stream, id) {
-		if (!clientStore.contains(feed)) {
-			setTimeout(() => recursivelyInsertStream(stream, id), 500)
-			return
-		}
+	// Set default listener position
+	audioContext.listener.positionX.value = 0
+	audioContext.listener.positionY.value = 0
+	audioContext.listener.positionZ.value = 0
+	audioContext.listener.forwardX.value = 0
+	audioContext.listener.forwardY.value = 0
+	audioContext.listener.forwardZ.value = 0
+	audioContext.listener.upX.value = 0
+	audioContext.listener.upY.value = 0
+	audioContext.listener.upZ.value = 0
 
-		insertStreamToClient(stream, id)
-	}
-
-	recursivelyInsertStream(stream, feed)
-}
-
-function createVoiceClient(token) {
-	const client = createJanusClient(token)
-
-	client.onConnect(async () => {
-		console.info("Initializing client session")
-		const session = new Session(client.getSession().getId())
-		userStore.setSession(session)
-
-		if (!userStore.room) {
-			console.info("Moving to default room:", 4054723098316357)
-			userStore.setRoom(4054723098316357)
-			await moveClientToRoom(userStore.room)
-		}
-
-		const videoRoom = wrapVideoRoom(client, userStore.room)
-
-		console.info("Publishing client media to room")
-		await publishClientMedia(videoRoom).catch(err =>
-			console.error("Failed to publish client media:", err),
-		)
-
-		console.info("Listen to new feeds")
-		await listenToNewFeeds(
-			videoRoom,
-			handleClientConnected,
-			handleClientDisconnected,
-			handleConnectionClose,
-			handleStream,
-		).catch(err => console.error("Failed to listen for incoming feeds:", err))
-	})
-
-	client.onDisconnect(() => {
-		console.info("Client disconnected")
-		const current = clientStore.getClient(userStore.session.publisherId)
-		clientStore.removeClient(current)
-	})
-
-	window.addEventListener("beforeunload", () => {
-		client.client.disconnect()
-	})
-
-	return client.client
+	// Initialize audio context
+	userStore.setAudioContext(audioContext)
 }
 
 function Home() {
-	const [selfClient, setSelfClient] = useState(null)
+	const [janusClient, setJanusClient] = useState(null)
+
+	// Disconnects the janus client
+	const closeSession = useCallback(() => {
+		if (!janusClient || !janusClient.isConnected()) return
+		janusClient.disconnect()
+		setJanusClient(null)
+	}, [janusClient])
 
 	useEffect(() => {
-		// Load user data
-		loadUserFromLocalStorage()
-
-		// Connect client
-		const client = createVoiceClient(userStore.token)
-		client.connect()
-
-		setSelfClient(client)
-		// Disconnect from client after effect
-		return () => {
-			client.disconnect()
+		try {
+			createAudioContext()
+		} catch (error) {
+			return console.error(error)
 		}
+
+		// Initialize client
+		const janusClient = createJanusClient(userStore.token)
+		janusClient.connect()
+		setJanusClient(janusClient)
+
+		// Close session on component unrender
+		return closeSession
 	}, [])
-
-	const closeSession = async () => {
-		if (selfClient) {
-			await selfClient.disconnect()
-			setSelfClient(null)
-		}
-	}
 
 	return (
 		<div>
@@ -155,7 +67,7 @@ function Home() {
 			<main className="bg-primary-100">
 				<Navigation />
 				<ClientListView clients={clientStore.clients} />
-				{selfClient && <DebugStatus closeSession={closeSession} />}
+				{janusClient && <DebugStatus closeSession={closeSession} />}
 				<Footer />
 			</main>
 		</div>

@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react"
 import * as R from "ramda"
 import AudioMeter from "../util/sound-meter"
 import Slider from "./slider"
+import userStore from "stores/User"
+import { autorun } from "mobx"
 
 function SensitivityIndicator() {
 	const [sensitivity, setSensitivity] = useState(0)
@@ -18,26 +20,23 @@ function SensitivityIndicator() {
 	}
 
 	useEffect(() => {
-		async function loadAudioMeter() {
-			try {
-				window.AudioContext = window.AudioContext || window.webkitAudioContext
-				window.audioContext = new AudioContext()
-			} catch (e) {
-				alert("Web Audio API not supported.")
+		const disposeAuidoMeter = autorun(async () => {
+			const context = userStore.audioContext
+
+			if (!context) {
+				return
 			}
 
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-			const mediaStreamSource = window.audioContext.createMediaStreamSource(stream)
+			const options = { mediaStream: stream }
+			const mediaStreamSource = new MediaStreamAudioSourceNode(context, options)
 
 			// Create a new volume meter and connect it.
-			audioMeter.current = AudioMeter(window.audioContext)
+			audioMeter.current = AudioMeter(context)
 			mediaStreamSource.connect(audioMeter.current)
+		})
 
-			// Resume audio context
-			window.audioContext.resume()
-		}
-
-		loadAudioMeter()
+		return () => disposeAuidoMeter()
 	}, [])
 
 	useEffect(() => {

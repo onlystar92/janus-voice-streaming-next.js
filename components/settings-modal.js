@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { observer } from "mobx-react-lite"
 import * as R from "ramda"
-import { userStore } from "stores/User"
+import userStore from "stores/User"
 import Slider from "components/slider"
 import Select from "components/select"
 import NavigationArrow from "icons/NavigationArrow"

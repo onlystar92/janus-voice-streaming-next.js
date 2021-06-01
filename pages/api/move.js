@@ -1,5 +1,3 @@
-import Cookies from "cookies"
-
 async function movePlayerToRoom(player, room) {
 	const response = await fetch(
 		`https://api.godcomplex.org/debug/api/players/${player}/move/${room}`,
@@ -8,12 +6,7 @@ async function movePlayerToRoom(player, room) {
 }
 
 export default async function handler(req, res) {
-	const { room } = req.body
-	const cookies = new Cookies(req, res)
-
-	// Retrieve session cookie
-	const sessionCookie = cookies.get("voice_session")
-	const { player } = JSON.parse(sessionCookie)
+	const { player, room } = req.body
 
 	function handleSuccess(response) {
 		console.info(`Moved player ${player} to room ${room}:`, response)

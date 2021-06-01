@@ -1,7 +1,5 @@
 import { makeAutoObservable } from "mobx"
 import * as R from "ramda"
-import { task } from "folktale/concurrency/task"
-import Result from "folktale/result"
 
 class Settings {
 	muted
@@ -40,62 +38,60 @@ class Settings {
 	}
 }
 
-class Session {
-	id
-	publisherId
-
-	constructor(id) {
-		this.id = id
-		makeAutoObservable(this)
-	}
-
-	setPublisherId(publisherId) {
-		this.publisherId = publisherId
-	}
-}
-
 class User {
+	uuid
 	token
 	username
 	room
 	settings
+	session
+	audioContext
+	listening // Array of feeds being listened to by user
+	alreadyListening
 
-	constructor(token, username, room = -1) {
-		this.token = token
-		this.username = username
-		this.room = room
+	constructor() {
 		this.settings = new Settings(false)
+		this.listening = []
+		this.alreadyListening = []
 		makeAutoObservable(this)
 	}
 
-	setSession(session) {
-		this.session = session
+	listenToUser(user) {
+		this.listening = [...this.listening, user]
+	}
+
+	stopListeningToUser(user) {
+		this.listening = R.filter(R.complement(R.equals(user)), this.listening)
+	}
+
+	listenAlready(user) {
+		this.alreadyListening = [...this.alreadyListening, user]
+	}
+
+	setToken(token) {
+		this.token = token
+	}
+
+	setUUID(uuid) {
+		this.uuid = uuid
+	}
+
+	setUsername(username) {
+		this.username = username
 	}
 
 	setRoom(room) {
 		this.room = room
 	}
+
+	setAudioContext(audioContext) {
+		this.audioContext = audioContext
+	}
+
+	setSession(session) {
+		this.session = session
+	}
 }
 
-let userStore
-
-function initializeStore(...args) {
-	if (userStore) return
-	userStore = new User(...args)
-}
-
-const cacheUserInStorage = (user, cache) => {
-	const userInfo = R.pick(["token", "username", "room"], user)
-	cache.setItem("user", JSON.stringify(userInfo))
-}
-
-function retrieveLocalStorage({ resolve }) {
-	resolve(localStorage ? Result.Ok(localStorage) : Result.Error("Failed to cache user information"))
-}
-
-async function saveCurrentUser() {
-	const storageResult = await task(retrieveLocalStorage).run().promise()
-	cacheUserInStorage(userStore, storageResult.merge())
-}
-
-export { Session, userStore, initializeStore, saveCurrentUser }
+const userStore = new User()
+export default userStore

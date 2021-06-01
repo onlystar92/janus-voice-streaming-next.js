@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { autorun } from "mobx"
 import { observer } from "mobx-react-lite"
 import clsx from "clsx"
-import { userStore } from "stores/User"
+import userStore from "stores/User"
 import ClientInput from "./client-input"
 import hark from "hark"
 
@@ -21,6 +21,8 @@ function ClientAvatar({ client }) {
 	const [muted, setMuteStatus] = useState(false)
 
 	useEffect(() => {
+		if (!username) return
+
 		async function resolveClientAvatar() {
 			const response = await fetchUserAvatar(username)
 
@@ -39,9 +41,7 @@ function ClientAvatar({ client }) {
 		return autorun(() => {
 			const stream = client.stream
 
-			if (!stream) {
-				return
-			}
+			if (!stream) return
 
 			stream.getTracks()[0].onmute = function () {
 				console.log("stream muted", "muted")
@@ -64,21 +64,53 @@ function ClientDisplay({ client }) {
 	const clientType = resolveClientType(client)
 	const audioRef = useRef()
 	const [isSpeaking, setIsSpeaking] = useState(false)
+	const isMuted = userStore.settings.muted
+	const isUser = userStore.uuid === client.uuid
+
+	useEffect(() => {
+		if (clientType !== "self" || client.stream) {
+			return
+		}
+
+		async function assignSelfStream() {
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+			client.setStream(stream)
+		}
+
+		assignSelfStream()
+	}, [])
 
 	// Handle stream change
 	useEffect(() => {
-		return autorun(() => {
+		const disposeStreamHandler = autorun(() => {
 			const stream = client.stream
 
-			if (!audioRef.current || !stream) {
+			if (!stream) {
+				return
+			}
+
+			console.info("Started speech analyzer")
+			let options = {}
+			let speechEvents = hark(stream, options)
+
+			speechEvents.on("speaking", () => {
+				setIsSpeaking(true)
+			})
+
+			speechEvents.on("stopped_speaking", () => {
+				setIsSpeaking(false)
+			})
+
+			console.info("Updating audio stream")
+			if (!audioRef.current) {
 				return
 			}
 
 			audioRef.current.srcObject = stream
-			// audioRef.current.src = window.URL.createObjectURL(client.stream)
-			audioRef.current.play()
-			console.info("Updated display component")
+			console.info("Updated audio stream")
 		})
+
+		return () => disposeStreamHandler()
 	}, [])
 
 	// Handle preferred output change
@@ -123,27 +155,6 @@ function ClientDisplay({ client }) {
 		})
 	}, [])
 
-	useEffect(() => {
-		return autorun(() => {
-			const stream = client.stream
-
-			if (!audioRef.current || !stream) {
-				return
-			}
-
-			let options = {}
-			let speechEvents = hark(stream, options)
-
-			speechEvents.on("speaking", () => {
-				setIsSpeaking(true)
-			})
-
-			speechEvents.on("stopped_speaking", () => {
-				setIsSpeaking(false)
-			})
-		})
-	}, [])
-
 	return (
 		<>
 			<div
@@ -151,7 +162,9 @@ function ClientDisplay({ client }) {
 					"mt-2 z-10 p-2 px-2 flex justify-between items-center rounded-lg shadow-sm bg-primary-200",
 					"sm:m-0",
 					"lg:px-4",
-					{ "ring-2 ring-green-700": isSpeaking },
+					{
+						"ring-2 ring-green-700": (isUser && !isMuted && isSpeaking) || (!isUser && isSpeaking),
+					},
 				)}
 			>
 				<div className="flex items-center">
@@ -173,7 +186,9 @@ function ClientDisplay({ client }) {
 				</div>
 				<ClientInput client={client} type={clientType} />
 			</div>
-			<audio ref={audioRef} className="hidden" autoPlay playsInline controls={false} />
+			{clientType === "peer" && (
+				<audio ref={audioRef} className="hidden" controls={false} muted autoPlay playsInline />
+			)}
 		</>
 	)
 }

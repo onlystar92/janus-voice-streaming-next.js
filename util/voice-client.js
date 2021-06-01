@@ -1,113 +1,122 @@
+import { autorun } from "mobx"
 import * as R from "ramda"
-import clientStore, { Client } from "stores/ClientStore"
-import { userStore } from "stores/User"
-import { executeIfPresent } from "./callback"
-import { publishAudioTracks, listenFeed, getFeedsExcept, listParticipants } from "./video-room"
+import clientStore from "stores/ClientStore"
+import userStore from "stores/User"
+import { publishAudioTracks, listenFeed, listParticipants } from "./janus/video-room"
 
-function publishClientMedia(room) {
-	return new Promise(async (resolve, reject) => {
-		const { id, onConnect, onDisconnect } = await publishAudioTracks(room)
+async function enumerateMediaDevices() {
+	return await navigator.mediaDevices.enumerateDevices()
+}
 
-		// Handle connect
-		onConnect(() => {
-			console.info("Assigned publisher id:", id)
-			userStore.session.setPublisherId(id)
+async function findDeviceIdByName(name) {
+	const devices = await enumerateMediaDevices()
+	return devices.find(device => device.label === name)
+}
 
-			// Add client
-			const client = new Client(id, userStore.username)
-			clientStore.addClient(client)
-			resolve()
-		})
+async function publishClientMedia(room) {
+	const { id, peerConnection, trackSender } = await publishAudioTracks(room)
 
-		// Handle client disconnect
-		onDisconnect(() => {
-			userStore.session.setPublisherId(null)
+	const disposeInputHandler = autorun(async () => {
+		const preferredInput = userStore.settings.preferredInput
+		const device = await findDeviceIdByName(preferredInput)
 
-			// Remove client
-			if (clientStore.contains(id)) {
-				const client = clientStore.getClient(id)
-				clientStore.removeClient(client)
-			}
+		if (!device || !device.deviceId) {
+			return
+		}
 
-			// Reject promise
-			reject()
-		})
+		getUserMediaStream({ audio: { deviceId: device.deviceId } })
+			.then(newStream => {
+				const audioTrack = newStream.getAudioTracks()[0]
+				trackSender.replaceTrack(audioTrack)
+				console.info("Changed input device to:", audioTrack)
+			})
+			.catch(error => {
+				console.error(`Failed to get media stream from device '${preferredInput}':`, error)
+			})
 	})
+
+	const disposeMuteHandler = autorun(() => {
+		console.info("Muted:", userStore.settings.muted)
+		trackSender.track.enabled = !userStore.settings.muted
+	})
+
+	// Handle connection state
+	peerConnection.onconnectionstatechange = function (event) {
+		switch (peerConnection.connectionState) {
+			case "connected":
+				console.info("User publishing stream:", id)
+				break
+			case "disconnected":
+			case "failed":
+				console.info("User media stream disconnected")
+				break
+			case "closed":
+				console.info("Connection closed")
+				disposeMuteHandler()
+				disposeInputHandler()
+				break
+		}
+	}
+
+	return peerConnection
 }
 
-async function listenToNewFeeds(
-	room,
-	onClientConnected,
-	onClientDisconnected,
-	onConnectionClose,
-	onStreamReceived,
-) {
-	const feeds = await getFeedsExcept(room, userStore.session.publisherId)
-
-	// Listen to all new feeds
-	feeds
-		.filter(feed => R.not(clientStore.contains(feed)))
-		.forEach(async feed => {
-			console.info("Listening to new feed:", feed)
-			await listenToFeed(
-				room,
-				feed,
-				onClientConnected,
-				onClientDisconnected,
-				onConnectionClose,
-				onStreamReceived,
-			)
-		})
-
-	// Recursively call method after 5s
-	setTimeout(
-		() =>
-			listenToNewFeeds(
-				room,
-				onClientConnected,
-				onClientDisconnected,
-				onConnectionClose,
-				onStreamReceived,
-			),
-		5000,
-	)
+const audioPhysicsConfig = {
+	directionalAudio: true,
+	panningModel: "HRTF", //human head
+	distanceModel: "inverse", //inverse, linear, or exponential
+	refDistance: 0.15, //basic distance unit of 1 (meter)
+	rolloffFactor: 0.003, //higher means faster volume loss
+	maxDistance: 80,
 }
 
-async function listenToFeed(
-	room,
-	feed,
-	onClientConnected,
-	onClientDisconnected,
-	onConnectionClose,
-	onStreamReceived,
-) {
-	const streamHandler = event => onStreamReceived(feed, event)
-	const listenHandle = await listenFeed(room, feed, streamHandler)
+async function listenToFeed(room, feed) {
+	let client
 
-	listenHandle.onConnect(async event => {
-		console.info("Finding feed", feed, "in room")
+	async function onStreamReceived(event) {
+		console.info("Finding participant", feed, "in room")
 		const listResponse = await listParticipants(room)
 		const participant = listResponse.participants.find(R.propEq("id", feed))
+		client = clientStore.findByUUID(participant.display)
 
-		// Add client
-		const client = new Client(participant.id, participant.display)
-		clientStore.addClient(client)
+		console.info("Initializing panner node")
+		const context = userStore.audioContext
+		const stream = event.streams[0]
 
-		// Execute callback
-		await executeIfPresent(onClientConnected, [feed, event])
+		const options = {
+			mediaStream: stream,
+		}
+		const audioSource = new MediaStreamAudioSourceNode(context, options)
+		const node = new PannerNode(context, audioPhysicsConfig)
+
+		//default position is zero, facing south.
+		//note that for default cone values, orientation of speaker isn't significant
+		node.positionX.value = 0
+		node.positionY.value = 0
+		node.positionZ.value = 0
+
+		//Hook everything up
+		audioSource.connect(node)
+		node.connect(context.destination)
+
+		// Assign node and stream to client
+		client.setNode(node)
+		client.setStream(stream)
+	}
+
+	const listenHandle = await listenFeed(room, feed, onStreamReceived)
+
+	listenHandle.onConnect(async event => {
+		console.info("Connectd to feed:", feed)
 	})
 
 	listenHandle.onDisconnect(async event => {
-		const client = clientStore.getClient(feed)
-		clientStore.removeClient(client)
-
-		await executeIfPresent(onClientDisconnected, [feed, event])
+		clientStore.removeClient(client.uuid)
 	})
 
 	listenHandle.onClose(async event => {
 		console.info("Connection closed")
-		await executeIfPresent(onConnectionClose, [feed, event])
 	})
 }
 
-export { publishClientMedia, listenToFeed, listenToNewFeeds }
+export { publishClientMedia, listenToFeed }
