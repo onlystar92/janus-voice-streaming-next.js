@@ -3,12 +3,12 @@ Web client using WebRTC voice rooms running on a Janus backend.
 
 ## Getting Started
 
-First, install all the dependencies using the following command:
+First, install the project dependencies:
 ```bash
 yarn
 ```
 
-Second, you will need to [install mk-cert](https://github.com/FiloSottile/mkcert#installation) to generate a certificate. We require a certificate to run the development environment. You can generate the certificate and configure it following [this guide](https://web.dev/how-to-use-local-https/#setup). You can configure the certificate in the `server.js` file.
+Second, you will need to [install mkcert](https://github.com/FiloSottile/mkcert#installation) to generate a certificate. We require a certificate to run the development environment. You can generate a certificate and configure it by following [this guide](https://web.dev/how-to-use-local-https/#setup). The generated certificate can be configured in the [server.js](https://github.com/Hylist/voice-site/blob/master/server.js#L9-L10) file.
 
 Third, run the development server:
 ```bash
