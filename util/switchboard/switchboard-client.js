@@ -4,6 +4,7 @@ import {
 	parseStringPositions,
 	calculateForwardDirectionVector,
 	calculateHeadDirectionVector,
+	calculateDistance,
 } from "./positions"
 
 function updateUserPosition(position) {
@@ -37,7 +38,7 @@ function updatePeerPosition(client, position, listenerPosition) {
 	client.node.orientationZ.value = forwardVector.z
 
 	// Update distance
-	const distance = calculateDistanceSquared(listenerPosition, position)
+	const distance = calculateDistance(listenerPosition, position)
 	client.node.refDistance = distance
 }
 
@@ -100,7 +101,7 @@ function handleMessage(event) {
 					const currentUUID = position.player
 
 					// Check if player is in same server and world
-					if (!shouldIgnorePosition(position, userPosition)) {
+					if (shouldIgnorePosition(position, userPosition)) {
 						return
 					}
 
@@ -117,7 +118,7 @@ function handleMessage(event) {
 					}
 
 					// Update positions
-					updatePeerPosition(peerClient, position, listenerPosition)
+					updatePeerPosition(peerClient, position, userPosition)
 				})
 			break
 		case "joinRoom":

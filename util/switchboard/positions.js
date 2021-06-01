@@ -7,7 +7,7 @@ function parsePositionCoordinates(position) {
 	return R.mapObjIndexed(parseFloat, coordinates)
 }
 
-function calculateDistanceSquared(firstPosition, secondPosition) {
+function calculateDistance(firstPosition, secondPosition) {
 	const firstCoordinates = parsePositionCoordinates(firstPosition)
 	const secondCoordinates = parsePositionCoordinates(secondPosition)
 	return Math.sqrt(
@@ -39,7 +39,7 @@ function calculateHeadDirectionVector(position) {
 
 export {
 	parseStringPositions,
-	calculateDistanceSquared,
+	calculateDistance,
 	calculateForwardDirectionVector,
 	calculateHeadDirectionVector,
 }
