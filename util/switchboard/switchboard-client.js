@@ -4,7 +4,6 @@ import {
 	parseStringPositions,
 	calculateForwardDirectionVector,
 	calculateHeadDirectionVector,
-	calculateDistance,
 } from "./positions"
 
 function updateUserPosition(position) {
@@ -23,7 +22,7 @@ function updateUserPosition(position) {
 	userStore.audioContext.listener.forwardZ.value = forwardVector.z
 }
 
-function updatePeerPosition(client, position, listenerPosition) {
+function updatePeerPosition(client, position) {
 	if (!client.node) return
 
 	// Update coordinates
@@ -36,10 +35,6 @@ function updatePeerPosition(client, position, listenerPosition) {
 	client.node.orientationX.value = forwardVector.x
 	client.node.orientationY.value = forwardVector.y
 	client.node.orientationZ.value = forwardVector.z
-
-	// Update distance
-	const distance = calculateDistance(listenerPosition, position)
-	client.node.refDistance = distance
 }
 
 function initializeUserClient(uuid, token, room) {
@@ -118,7 +113,7 @@ function handleMessage(event) {
 					}
 
 					// Update positions
-					updatePeerPosition(peerClient, position, userPosition)
+					updatePeerPosition(peerClient, position)
 				})
 			break
 		case "joinRoom":

@@ -65,9 +65,9 @@ const audioPhysicsConfig = {
 	directionalAudio: true,
 	panningModel: "HRTF", //human head
 	distanceModel: "inverse", //inverse, linear, or exponential
-	refDistance: 0.15, //basic distance unit of 1 (meter)
-	rolloffFactor: 0.003, //higher means faster volume loss
-	maxDistance: 80,
+	maxDistance: 80, //max distance for audio rolloff
+	rolloffFactor: 0.5, //higher means faster volume loss
+	refDistance: 1, //reference distance for reducing volume
 }
 
 async function listenToFeed(room, feed) {
