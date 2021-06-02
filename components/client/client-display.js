@@ -5,6 +5,7 @@ import clsx from "clsx"
 import userStore from "stores/User"
 import ClientInput from "./client-input"
 import hark from "hark"
+import Slider from "../slider"
 
 async function findDeviceIdByName(name) {
 	const devices = await navigator.mediaDevices.enumerateDevices()
@@ -15,10 +16,9 @@ function fetchUserAvatar(username) {
 	return fetch(`/api/avatar?user=${username}`)
 }
 
-function ClientAvatar({ client }) {
-	const { username } = client
+function ClientAvatar({ client, isMuted, onClick }) {
+	const { username, muted } = client
 	const [avatar, setAvatar] = useState("/steve-avatar.png")
-	const [muted, setMuteStatus] = useState(false)
 
 	useEffect(() => {
 		if (!username) return
@@ -53,7 +53,16 @@ function ClientAvatar({ client }) {
 		})
 	}, [])
 
-	return <img className="w-8 h-auto lg:w-14" src={avatar} alt={username + "'s avatar"} />
+	return (
+		<div className="w-8 h-16 lg:w-14 relative flex items-center justify-center" onClick={onClick}>
+			<img className="w-full h-full" src={avatar} alt={username + "'s avatar"} />
+			{isMuted ? (
+				<img className="absolute w-9/12" src="/mute.png" />
+			) : muted ? (
+				<img className="absolute w-9/12" src="/muted.png" />
+			) : null}
+		</div>
+	)
 }
 
 function resolveClientType(client) {
@@ -64,6 +73,7 @@ function ClientDisplay({ client }) {
 	const clientType = resolveClientType(client)
 	const audioRef = useRef()
 	const [isSpeaking, setIsSpeaking] = useState(false)
+	const [showVolumeSlider, setShowVolumeSlider] = useState(true)
 	const isMuted = userStore.settings.muted
 	const isUser = userStore.uuid === client.uuid
 
@@ -159,6 +169,7 @@ function ClientDisplay({ client }) {
 		<>
 			<div
 				className={clsx(
+					{ "fixed left-12 bottom-8 w-96": clientType },
 					"mt-2 z-10 p-2 px-2 flex justify-between items-center rounded-lg shadow-sm bg-primary-200",
 					"sm:m-0",
 					"lg:px-4",
@@ -167,22 +178,34 @@ function ClientDisplay({ client }) {
 					},
 				)}
 			>
-				<div className="flex items-center">
-					<ClientAvatar client={client} />
-					<span
-						className={clsx(
-							"px-2 py-1 ml-2",
-							"text-sm font-bold rounded-md",
-							"xl:px-4 xl:py-2",
-							"xl:rounded-xl xl:px-4 xl:py-2 xl:text-lg",
-							{
-								"bg-primary-text text-secondary-text ": clientType === "self",
-								"bg-secondary-200 text-primary-text": clientType === "peer",
-							},
-						)}
-					>
-						{client.username}
-					</span>
+				<div className="flex items-center flex-1">
+					<ClientAvatar
+						client={client}
+						isMuted={isMuted}
+						onClick={() => {
+							setShowVolumeSlider(!showVolumeSlider)
+						}}
+					/>
+					{showVolumeSlider ? (
+						<span
+							className={clsx(
+								"px-2 py-1 ml-2",
+								"text-sm font-bold rounded-md",
+								"xl:px-4 xl:py-2",
+								"xl:rounded-xl xl:px-4 xl:py-2 xl:text-lg",
+								{
+									"bg-primary-text text-secondary-text ": clientType === "self",
+									"bg-secondary-200 text-primary-text": clientType === "peer",
+								},
+							)}
+						>
+							{client.username}
+						</span>
+					) : (
+						<span className="px-2 xl:px-4 flex-1 text-white">
+							<Slider variant="line" initial={100} min={0} max={100} />
+						</span>
+					)}
 				</div>
 				<ClientInput client={client} type={clientType} />
 			</div>
