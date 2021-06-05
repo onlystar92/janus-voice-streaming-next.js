@@ -16,7 +16,7 @@ function fetchUserAvatar(username) {
 	return fetch(`/api/avatar?user=${username}`)
 }
 
-function ClientAvatar({ client, isMuted, onClick }) {
+function ClientAvatar({ client, isMuted, onClick, clientType }) {
 	const { username, muted } = client
 	const [avatar, setAvatar] = useState("/steve-avatar.png")
 
@@ -53,12 +53,14 @@ function ClientAvatar({ client, isMuted, onClick }) {
 		})
 	}, [])
 
+	const isSelf = clientType === "self"
+
 	return (
 		<div className="w-8 h-16 lg:w-14 relative flex items-center justify-center" onClick={onClick}>
 			<img className="w-full h-full" src={avatar} alt={username + "'s avatar"} />
-			{isMuted ? (
+			{!isSelf && isMuted ? (
 				<img className="absolute w-9/12" src="/mute.png" />
-			) : muted ? (
+			) : !isSelf && muted ? (
 				<img className="absolute w-9/12" src="/muted.png" />
 			) : null}
 		</div>
@@ -69,11 +71,11 @@ function resolveClientType(client) {
 	return client.username === userStore.username ? "self" : "peer"
 }
 
-function ClientDisplay({ client }) {
+function ClientDisplay({ client, closeSession }) {
 	const clientType = resolveClientType(client)
 	const audioRef = useRef()
 	const [isSpeaking, setIsSpeaking] = useState(false)
-	const [showVolumeSlider, setShowVolumeSlider] = useState(true)
+	const [showVolumeSlider, setShowVolumeSlider] = useState(false)
 	const isMuted = userStore.settings.muted
 	const isUser = userStore.uuid === client.uuid
 
@@ -181,33 +183,34 @@ function ClientDisplay({ client }) {
 				<div className="flex items-center flex-1">
 					<ClientAvatar
 						client={client}
+						clientType={clientType}
 						isMuted={isMuted}
 						onClick={() => {
 							setShowVolumeSlider(!showVolumeSlider)
 						}}
 					/>
-					{showVolumeSlider ? (
-						<span
-							className={clsx(
-								"px-2 py-1 ml-2",
-								"text-sm font-bold rounded-md",
-								"xl:px-4 xl:py-2",
-								"xl:rounded-xl xl:px-4 xl:py-2 xl:text-lg",
-								{
-									"bg-primary-text text-secondary-text ": clientType === "self",
-									"bg-secondary-200 text-primary-text": clientType === "peer",
-								},
-							)}
-						>
-							{client.username}
-						</span>
-					) : (
-						<span className="px-2 xl:px-4 flex-1 text-white">
-							<Slider variant="line" initial={100} min={0} max={100} />
-						</span>
-					)}
+					<span
+						className={clsx(
+							"px-2 py-1 ml-2",
+							"text-sm font-bold rounded-md",
+							"xl:px-4 xl:py-2",
+							"xl:rounded-xl xl:px-4 xl:py-2 xl:text-lg",
+							{
+								"bg-primary-text text-secondary-text ": clientType === "self",
+								"bg-secondary-200 text-primary-text": clientType === "peer",
+							},
+						)}
+					>
+						{client.username}
+					</span>
 				</div>
-				<ClientInput client={client} type={clientType} />
+				{showVolumeSlider ? (
+					<div className="w-56 text-white">
+						<Slider variant="line" initial={100} min={0} max={100} />
+					</div>
+				) : (
+					<ClientInput client={client} type={clientType} closeSession={closeSession} />
+				)}
 			</div>
 			{clientType === "peer" && (
 				<audio ref={audioRef} className="hidden" controls={false} muted autoPlay playsInline />
