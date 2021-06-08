@@ -24,139 +24,163 @@ const Header = forwardRef((_, ref) => (
 	/>
 ))
 
-const ProgressContainer = forwardRef(({ onMouseDown, children }, ref) => (
+const ProgressContainer = forwardRef(({ onMouseDown, children, variant }, ref) => (
 	<div
 		ref={ref}
-		className="relative h-4 bg-white bg-opacity-60 rounded-full overflow-hidden"
+		className={clsx(
+			{ "h-4": variant === "think", "h-1": variant === "line" },
+			"relative bg-white bg-opacity-60 rounded-full overflow-hidden",
+		)}
 		onMouseDown={onMouseDown}
 	>
 		{children}
 	</div>
 ))
 
-const Progress = forwardRef(({ onMouseDown }, ref) => (
+const Progress = forwardRef(({ onMouseDown, variant }, ref) => (
 	<div
 		ref={ref}
-		className="h-4 absolute bg-primary-100 rounded-full w-full"
+		className={clsx(
+			{ "h-4": variant === "think", "h-1": variant === "line" },
+			"absolute bg-primary-100 rounded-full w-full",
+		)}
 		onMouseDown={onMouseDown}
 	/>
 ))
 
-const Thumb = forwardRef(({ onMouseEnter, onMouseLeave, onMouseDown }, ref) => (
+const Thumb = forwardRef(({ onMouseEnter, onMouseLeave, onMouseDown, variant }, ref) => (
 	<div
 		ref={ref}
-		className="absolute w-2 h-6 bg-white rounded-full -top-1/4 cursor-ew-resize"
+		className={clsx(
+			{
+				"h-6 w-2 -top-1/4": variant === "think",
+				"h-3 w-3 -top-1": variant === "line",
+			},
+			"absolute bg-white rounded-full cursor-ew-resize",
+		)}
 		onMouseEnter={onMouseEnter}
 		onMouseLeave={onMouseLeave}
 		onMouseDown={onMouseDown}
 	/>
 ))
 
-const Slider = forwardRef(({ className, initial, min, max, onChange, thumb, disabled }, ref) => {
-	const initialPercentage = calculatePercentage(initial, min, max)
-	const rangeRef = useRef()
-	const rangeProgressRef = useRef()
-	const thumbRef = useRef()
-	const currentRef = useRef()
-	const diff = useRef()
+const Slider = forwardRef(
+	({ className, initial, min, max, onChange, thumb, disabled, variant }, ref) => {
+		const initialPercentage = calculatePercentage(initial, min, max)
+		const rangeRef = useRef()
+		const rangeProgressRef = useRef()
+		const thumbRef = useRef()
+		const currentRef = useRef()
+		const diff = useRef()
 
-	useLayoutEffect(() => {
-		handleUpdate(initial, initialPercentage)
-	}, [initial, initialPercentage, handleUpdate])
+		useLayoutEffect(() => {
+			handleUpdate(initial, initialPercentage)
+		}, [initial, initialPercentage, handleUpdate])
 
-	function handleUpdate(value, percentage) {
-		// Update progress bar
-		rangeProgressRef.current.style.width = calculateWidth(percentage)
+		function handleUpdate(value, percentage) {
+			// Update progress bar
+			rangeProgressRef.current.style.width = calculateWidth(percentage)
 
-		// Update thumb position
-		if (thumb) {
-			thumbRef.current.style.left = calculateLeftMargin(percentage, "8px", "0px")
+			// Update thumb position
+			if (thumb) {
+				thumbRef.current.style.left = calculateLeftMargin(percentage, "8px", "0px")
+			}
+
+			// Update header position and value
+			if (currentRef.current) {
+				const halfOfWidth = currentRef.current.getBoundingClientRect().width / 2
+				const width = `${halfOfWidth}px - 4px`
+				const minWidth = `-${halfOfWidth}px + 4px`
+				currentRef.current.style.left = calculateLeftMargin(percentage, width, minWidth)
+				currentRef.current.textContent = `${value}%`
+			}
 		}
 
-		// Update header position and value
-		if (currentRef.current) {
-			const halfOfWidth = currentRef.current.getBoundingClientRect().width / 2
-			const width = `${halfOfWidth}px - 4px`
-			const minWidth = `-${halfOfWidth}px + 4px`
-			currentRef.current.style.left = calculateLeftMargin(percentage, width, minWidth)
-			currentRef.current.textContent = `${value}%`
-		}
-	}
+		function handleMouseMove(event) {
+			let end = rangeRef.current.offsetWidth
+			let differenceX = event.clientX - rangeRef.current.getBoundingClientRect().left
 
-	function handleMouseMove(event) {
-		let end = rangeRef.current.offsetWidth
-		let differenceX = event.clientX - rangeRef.current.getBoundingClientRect().left
+			if (thumb) {
+				end -= thumbRef.current.offsetWidth
+				differenceX -= diff.current
+			}
 
-		if (thumb) {
-			end -= thumbRef.current.offsetWidth
-			differenceX -= diff.current
-		}
+			const newX = Math.min(Math.max(differenceX, 0), end)
+			const newPercentage = calculatePercentage(newX, 0, end)
+			const newValue = calculateValue(newPercentage, min, max)
 
-		const newX = Math.min(Math.max(differenceX, 0), end)
-		const newPercentage = calculatePercentage(newX, 0, end)
-		const newValue = calculateValue(newPercentage, min, max)
+			// Update visuals
+			handleUpdate(newValue, newPercentage)
 
-		// Update visuals
-		handleUpdate(newValue, newPercentage)
-
-		// Notify of new value
-		onChange(newValue)
-	}
-
-	function handleProgressClick(event) {
-		diff.current = 0
-		handleMouseMove(event)
-		handleMouseDown(event)
-	}
-
-	function handleMouseDown(event) {
-		if (thumb) {
-			diff.current = event.clientX - thumbRef.current.getBoundingClientRect().left
+			// Notify of new value
+			onChange(newValue)
 		}
 
-		// Register listeners
-		document.addEventListener("mousemove", handleMouseMove)
-		document.addEventListener("mouseup", handleMouseUp)
-	}
+		function handleProgressClick(event) {
+			diff.current = 0
+			handleMouseMove(event)
+			handleMouseDown(event)
+		}
 
-	function handleMouseUp() {
-		// Remove listeners
-		document.removeEventListener("mouseup", handleMouseUp)
-		document.removeEventListener("mousemove", handleMouseMove)
-	}
+		function handleMouseDown(event) {
+			if (thumb) {
+				diff.current = event.clientX - thumbRef.current.getBoundingClientRect().left
+			}
 
-	function showHeader() {
-		currentRef.current.style.opacity = "100"
-	}
+			// Register listeners
+			document.addEventListener("mousemove", handleMouseMove)
+			document.addEventListener("mouseup", handleMouseUp)
+		}
 
-	function hideHeader() {
-		currentRef.current.style.opacity = "0"
-	}
+		function handleMouseUp() {
+			// Remove listeners
+			document.removeEventListener("mouseup", handleMouseUp)
+			document.removeEventListener("mousemove", handleMouseMove)
+		}
 
-	function wrapToggleable(value) {
-		return disabled ? null : value
-	}
+		function showHeader() {
+			currentRef.current.style.opacity = "100"
+		}
 
-	return (
-		<div ref={ref} className={clsx(className, "relative")}>
-			<Header ref={currentRef} />
-			<ProgressContainer ref={rangeRef} onMouseDown={wrapToggleable(handleProgressClick)}>
-				<Progress ref={rangeProgressRef} onMouseDown={wrapToggleable(handleMouseDown)} />
-			</ProgressContainer>
-			{thumb && (
-				<Thumb
-					ref={thumbRef}
-					onMouseEnter={showHeader}
-					onMouseLeave={hideHeader}
-					onMouseDown={wrapToggleable(handleMouseDown)}
-				/>
-			)}
-		</div>
-	)
-})
+		function hideHeader() {
+			currentRef.current.style.opacity = "0"
+		}
+
+		function wrapToggleable(value) {
+			return disabled ? null : value
+		}
+
+		return (
+			<div ref={ref} className={clsx(className, "relative")}>
+				<Header ref={currentRef} />
+				<ProgressContainer
+					ref={rangeRef}
+					variant={variant}
+					onMouseDown={wrapToggleable(handleProgressClick)}
+				>
+					<Progress
+						ref={rangeProgressRef}
+						variant={variant}
+						onMouseDown={wrapToggleable(handleMouseDown)}
+					/>
+				</ProgressContainer>
+				{thumb && (
+					<Thumb
+						ref={thumbRef}
+						onMouseEnter={showHeader}
+						onMouseLeave={hideHeader}
+						variant={variant}
+						onMouseDown={wrapToggleable(handleMouseDown)}
+					/>
+				)}
+			</div>
+		)
+	},
+)
 
 Slider.defaultProps = {
 	min: 0,
+	variant: "think", // 'thick' or 'line'
 	thumb: true,
 	disabled: false,
 	onChange: () => {},

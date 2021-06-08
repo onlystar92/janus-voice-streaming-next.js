@@ -3,6 +3,7 @@ import * as R from "ramda"
 
 class Settings {
 	muted
+	defen
 	inputVolume
 	outputVolume
 	preferredInput
@@ -19,6 +20,10 @@ class Settings {
 
 	setMuted(muted) {
 		this.muted = muted
+	}
+
+	setDefen(defen) {
+		this.defen = defen
 	}
 
 	setInputVolume(volume) {

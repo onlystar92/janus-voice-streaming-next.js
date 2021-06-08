@@ -6,7 +6,6 @@ import userStore from "stores/User"
 import clientStore from "stores/ClientStore"
 import Footer from "components/footer"
 import Navigation from "components/navigation"
-import DebugStatus from "components/debug-status"
 import ClientListView from "components/client/client-list-view"
 
 function createAudioContext() {
@@ -66,8 +65,7 @@ function Home() {
 			</Head>
 			<main className="bg-primary-100">
 				<Navigation />
-				<ClientListView clients={clientStore.clients} />
-				{janusClient && <DebugStatus closeSession={closeSession} />}
+				<ClientListView clients={clientStore.clients} closeSession={closeSession} />
 				<Footer />
 			</main>
 		</div>

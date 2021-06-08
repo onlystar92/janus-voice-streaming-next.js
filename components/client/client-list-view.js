@@ -2,7 +2,7 @@ import { observer } from "mobx-react-lite"
 import clsx from "clsx"
 import ClientDisplay from "./client-display"
 
-function ClientListView({ clients }) {
+function ClientListView({ clients, closeSession }) {
 	return (
 		<div
 			className={clsx(
@@ -13,7 +13,7 @@ function ClientListView({ clients }) {
 			)}
 		>
 			{clients.map((client, _index) => (
-				<ClientDisplay key={client.uuid} client={client} />
+				<ClientDisplay key={client.uuid} client={client} closeSession={closeSession} />
 			))}
 		</div>
 	)
