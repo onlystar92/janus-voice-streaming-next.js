@@ -51,26 +51,30 @@ class User {
 	settings
 	session
 	audioContext
-	listening // Array of feeds being listened to by user
-	alreadyListening
+	pendingListen // Array of feeds pending to be listened
+	listening // Array of feeds being listened to
 
 	constructor() {
 		this.settings = new Settings(false)
+		this.pendingListen = []
 		this.listening = []
-		this.alreadyListening = []
 		makeAutoObservable(this)
 	}
 
-	listenToUser(user) {
+	addUserToPending(user) {
+		this.pendingListen = [...this.pendingListen, user]
+	}
+
+	removeUserFromPending(user) {
+		this.pendingListen = R.filter(R.complement(R.equals(user)), this.pendingListen)
+	}
+
+	addUserToListening(user) {
 		this.listening = [...this.listening, user]
 	}
 
-	stopListeningToUser(user) {
+	removeUserFromListening(user) {
 		this.listening = R.filter(R.complement(R.equals(user)), this.listening)
-	}
-
-	listenAlready(user) {
-		this.alreadyListening = [...this.alreadyListening, user]
 	}
 
 	setToken(token) {

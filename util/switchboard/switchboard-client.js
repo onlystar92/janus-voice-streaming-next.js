@@ -109,7 +109,7 @@ function handleMessage(event) {
 						clientStore.addClient(peerClient)
 
 						// Listen to user
-						userStore.listenToUser(currentUUID)
+						userStore.addUserToPending(currentUUID)
 					}
 
 					// Update positions

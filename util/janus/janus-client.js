@@ -10,24 +10,27 @@ function assignSession(session) {
 	userStore.setSession(session)
 }
 
+function notListeningTo(participant) {
+	return (
+		userStore.pendingListen.indexOf(participant.display) !== -1 &&
+		userStore.listening.indexOf(participant.display) === -1
+	)
+}
+
+async function listenToParticipant(room, participant) {
+	console.info(`Listening to participant ${participant.display}`)
+	await listenToFeed(room, participant.id)
+	userStore.removeUserFromPending(participant.display)
+	userStore.addUserToListening(participant.display)
+}
+
 async function listenToNewClients(room) {
 	const response = await listParticipants(room)
 
-	function notListeningTo(participant) {
-		return (
-			userStore.listening.indexOf(participant.display) !== -1 &&
-			userStore.alreadyListening.indexOf(participant.display) === -1
-		)
-	}
-
-	async function listenToParticipant(participant) {
-		console.info(`Listening to participant ${participant.display}`)
-		await listenToFeed(room, participant.id)
-		userStore.listenAlready(participant.display)
-	}
-
 	console.info("Participants:", response.participants)
-	response.participants.filter(notListeningTo).forEach(listenToParticipant)
+	response.participants
+		.filter(notListeningTo)
+		.forEach(participant => listenToParticipant(room, participant))
 
 	return setTimeout(async () => await listenToNewClients(room), 2000)
 }

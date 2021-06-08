@@ -111,7 +111,10 @@ async function listenToFeed(room, feed) {
 	})
 
 	listenHandle.onDisconnect(async event => {
+		console.info("Stopped listening to feed:", feed)
 		clientStore.removeClient(client.uuid)
+		userStore.removeUserFromPending(client.uuid)
+		userStore.removeUserFromListening(client.uuid)
 	})
 
 	listenHandle.onClose(async event => {
