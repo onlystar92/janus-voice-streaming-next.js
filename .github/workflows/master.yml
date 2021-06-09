@@ -1,0 +1,38 @@
+name: Deploy Master
+
+on:
+  push:
+    branches: [ master ]
+  # Allow the workflow to be manually executed
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Copy repository contents
+        uses: appleboy/scp-action@master
+        env:
+            HOST: ${{ secrets.HOST }}
+            USERNAME: ${{ secrets.USERNAME }}
+            PORT: ${{ secrets.PORT }}
+            KEY: ${{ secrets.SSHKEY }}
+        with:
+            source: "."
+            target: "/var/www/velt-voice"            
+
+      - name: Deploy website
+        uses: appleboy/ssh-action@master
+        with:
+            HOST: ${{ secrets.HOST }}
+            USERNAME: ${{ secrets.USERNAME }}
+            PORT: ${{ secrets.PORT }}
+            KEY: ${{ secrets.SSHKEY }}
+            script: |
+              cd /var/www/velt-voice/
+              yarn install --frozen-lockfile --production
+              screen -S voice-site -X quit
+              screen -dmS voice-site bash ./start_voice_site.sh
