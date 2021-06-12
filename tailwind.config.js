@@ -17,6 +17,9 @@ module.exports = {
 			gridTemplateRows: {
 				14: "repeat(14, minmax(0, 1fr))",
 			},
+			zIndex: {
+				"-1": "-1",
+			},
 			cursor: {
 				"ew-resize": "ew-resize",
 			},
