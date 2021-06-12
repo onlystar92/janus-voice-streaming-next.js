@@ -97,7 +97,7 @@ function handleEvent(event) {
 }
 
 export default function createJanusClient(token) {
-	const client = new JanusClient({ url: "wss://api.godcomplex.org/janus", reconnect: true, token })
+	const client = new JanusClient({ url: "wss://vapi.veltpvp.com/janus", reconnect: true, token })
 	client.onConnected(handleConnect(client))
 	client.onDisconnected(handleDisconnected)
 	client.onError(handleError)

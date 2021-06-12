@@ -3,12 +3,12 @@ import { observer } from "mobx-react-lite"
 import userStore from "stores/User"
 
 async function createMagicToken(uuid) {
-	const response = await fetch(`/api/token/${uuid}`)
+	const response = await fetch(`/token/${uuid}`)
 	return await response.json()
 }
 
 async function loginClient(token) {
-	await fetch(`https://api.godcomplex.org/login/${token}`, {
+	await fetch(`https://vapi.veltpvp.com/login/${token}`, {
 		credentials: "include",
 		redirect: "manual",
 	})
