@@ -3,7 +3,7 @@ import { observer } from "mobx-react-lite"
 import userStore from "stores/User"
 
 async function createMagicToken(uuid) {
-	const response = await fetch(`/token/${uuid}`)
+	const response = await fetch(`/api/token/${uuid}`)
 	return await response.json()
 }
 
