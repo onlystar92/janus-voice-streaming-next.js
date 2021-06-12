@@ -129,7 +129,8 @@ function handleOpen(event) {
 }
 
 function handleClose(event) {
-	console.info("Connection closing")
+	console.info("Connection closed")
+	console.info(event)
 }
 
 function handleError(error) {
@@ -138,7 +139,7 @@ function handleError(error) {
 }
 
 export default function createSwitchboardClient() {
-	const socket = new WebSocket("wss://api.godcomplex.org")
+	const socket = new WebSocket("wss://vapi.veltpvp.com")
 	socket.onopen = handleOpen
 	socket.onmessage = handleMessage
 	socket.onclose = handleClose

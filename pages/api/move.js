@@ -1,7 +1,5 @@
 async function movePlayerToRoom(player, room) {
-	const response = await fetch(
-		`https://api.godcomplex.org/debug/api/players/${player}/move/${room}`,
-	)
+	const response = await fetch(`https://vapi.veltpvp.com/api/players/${player}/move/${room}`)
 	return await response.json()
 }
 

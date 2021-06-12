@@ -8,7 +8,7 @@ async function createMagicToken(uuid) {
 }
 
 async function loginClient(token) {
-	await fetch(`https://api.godcomplex.org/login/${token}`, {
+	await fetch(`https://vapi.veltpvp.com/login/${token}`, {
 		credentials: "include",
 		redirect: "manual",
 	})
