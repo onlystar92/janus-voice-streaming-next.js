@@ -33,6 +33,8 @@ jobs:
             KEY: ${{ secrets.SSHKEY }}
             script: |
               cd /var/www/velt-voice/
-              yarn install --frozen-lockfile --production
+              git clean -fxd
+              yarn install --frozen-lockfile --production --ignore-scripts --prefer-offline
+              yarn build
               screen -S voice-site -X quit
-              screen -dmS voice-site bash ./start_voice_site.sh
+              screen -dmS voice-site yarn start
