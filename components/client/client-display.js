@@ -56,7 +56,10 @@ function ClientAvatar({ client, isMuted, onClick, clientType }) {
 	const isSelf = clientType === "self"
 
 	return (
-		<div className="w-8 h-16 lg:w-14 relative flex items-center justify-center" onClick={onClick}>
+		<div
+			className="flex-shrink-0 w-8 h-16 lg:w-14 relative flex items-center justify-center"
+			onClick={onClick}
+		>
 			<img className="w-full h-full" src={avatar} alt={username + "'s avatar"} />
 			{!isSelf && isMuted ? (
 				<img className="absolute w-9/12" src="/mute.png" />
