@@ -67,6 +67,19 @@ function Home() {
 				<Navigation />
 				<ClientListView clients={clientStore.clients} closeSession={closeSession} />
 				<Footer />
+				<div className="fixed bottom-5 right-5 z-50 mt-2 p-2 px-2 flex flex-col justify-center items-center rounded-lg shadow-sm bg-primary-200 sm:m-0 lg:px-4">
+					<div
+						className="flex flex-row justify-center items-baseline h-12 w-20"
+						id="networkQuality"
+					>
+						<div className="flex-1 mx-1 h-1/5"></div>
+						<div className="flex-1 mx-1 h-2/5"></div>
+						<div className="flex-1 mx-1 h-3/5"></div>
+						<div className="flex-1 mx-1 h-4/5"></div>
+						<div className="flex-1 mx-1 h-full"></div>
+					</div>
+					<div className="text-primary-text text-sm mt-2 text-center" id="duration" />
+				</div>
 			</main>
 		</div>
 	)

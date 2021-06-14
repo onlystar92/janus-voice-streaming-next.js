@@ -40,6 +40,67 @@ function handleIceCandidate(handle, peerConnection) {
 	}
 }
 
+function average(values) {
+	var sumValues = values.reduce(function (sum, value) {
+		return sum + value
+	}, 0)
+
+	return sumValues / values.length
+}
+
+function msToTime(duration) {
+	var seconds = Math.floor((duration / 1000) % 60),
+		minutes = Math.floor((duration / (1000 * 60)) % 60),
+		hours = Math.floor((duration / (1000 * 60 * 60)) % 24)
+
+	hours = hours < 10 ? "0" + hours : hours
+	minutes = minutes < 10 ? "0" + minutes : minutes
+	seconds = seconds < 10 ? "0" + seconds : seconds
+
+	return hours + ":" + minutes + ":" + seconds
+}
+
+function showPeerConnectionStatus(connection) {
+	var start = Date.now()
+
+	window.setInterval(function () {
+		let rttMeasures = []
+		var sender = connection.getSenders()[0]
+
+		// Show Duration
+		var delta = Date.now() - start // milliseconds elapsed since start
+		document.getElementById("duration").innerText = msToTime(delta)
+
+		sender.getStats(null).then(stats => {
+			stats.forEach(report => {
+				if (report.type === "remote-inbound-rtp") {
+					rttMeasures.push(report["roundTripTime"])
+					var avgRtt = average(rttMeasures)
+
+					var emodel = 0
+					if (avgRtt / 2 >= 0.5) emodel = 1
+					else if (avgRtt / 2 >= 0.4) emodel = 2
+					else if (avgRtt / 2 >= 0.3) emodel = 3
+					else if (avgRtt / 2 >= 0.2) emodel = 4
+					else if (avgRtt / 2 < 0.2) emodel = 5
+
+					// Draw Network Quality Bar
+					const elements = document.querySelectorAll("#networkQuality > div")
+					elements.forEach((el, key) => {
+						if (emodel - 1 >= key) {
+							el.classList.remove("bg-gray-600")
+							el.classList.add("bg-gray-300")
+						} else {
+							el.classList.remove("bg-gray-300")
+							el.classList.add("bg-gray-600")
+						}
+					})
+				}
+			})
+		})
+	}, 1000)
+}
+
 async function publishAudioTracks(room, constraints = DEFAULT_CONSTRAINTS) {
 	const { token, session } = userStore
 
@@ -50,6 +111,9 @@ async function publishAudioTracks(room, constraints = DEFAULT_CONSTRAINTS) {
 	// Create peer connection with audio tracks
 	const peerConnection = createPeerConnection()
 	const trackSender = peerConnection.addTrack(audioTrack, stream)
+
+	// Show Connection Status
+	showPeerConnectionStatus(peerConnection)
 
 	// Create offer
 	const offer = await peerConnection.createOffer()
