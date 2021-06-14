@@ -76,8 +76,8 @@ function ClientDisplay({ client, closeSession }) {
 	const audioRef = useRef()
 	const [isSpeaking, setIsSpeaking] = useState(false)
 	const [showVolumeSlider, setShowVolumeSlider] = useState(false)
-	const isMuted = userStore.settings.muted
 	const isUser = userStore.uuid === client.uuid
+	const isMuted = isUser ? userStore.settings.muted : client.muted
 
 	useEffect(() => {
 		if (clientType !== "self" || client.stream) {
@@ -167,11 +167,17 @@ function ClientDisplay({ client, closeSession }) {
 		})
 	}, [])
 
+	const toggleVolumeSlider = () => {
+		if (isUser) {
+			setShowVolumeSlider(!showVolumeSlider)
+		}
+	}
+
 	return (
 		<>
 			<div
 				className={clsx(
-					{ "fixed left-12 bottom-8 w-96": clientType },
+					{ "fixed left-12 bottom-8 w-96": isUser },
 					"mt-2 z-10 p-2 px-2 flex justify-between items-center rounded-lg shadow-sm bg-primary-200",
 					"sm:m-0",
 					"lg:px-4",
@@ -185,9 +191,7 @@ function ClientDisplay({ client, closeSession }) {
 						client={client}
 						clientType={clientType}
 						isMuted={isMuted}
-						onClick={() => {
-							setShowVolumeSlider(!showVolumeSlider)
-						}}
+						onClick={toggleVolumeSlider}
 					/>
 					<span
 						className={clsx(

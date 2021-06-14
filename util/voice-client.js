@@ -104,22 +104,28 @@ async function listenToFeed(room, feed) {
 		client.setStream(stream)
 	}
 
-	const listenHandle = await listenFeed(room, feed, onStreamReceived)
+	const { onConnect, onDisconnect, onClose, peerConnection } = await listenFeed(
+		room,
+		feed,
+		onStreamReceived,
+	)
 
-	listenHandle.onConnect(async event => {
+	onConnect(async event => {
 		console.info("Connectd to feed:", feed)
 	})
 
-	listenHandle.onDisconnect(async event => {
+	onDisconnect(async event => {
 		console.info("Stopped listening to feed:", feed)
 		clientStore.removeClient(client.uuid)
 		userStore.removeUserFromPending(client.uuid)
 		userStore.removeUserFromListening(client.uuid)
 	})
 
-	listenHandle.onClose(async event => {
+	onClose(async event => {
 		console.info("Connection closed")
 	})
+
+	return peerConnection
 }
 
 export { publishClientMedia, listenToFeed }

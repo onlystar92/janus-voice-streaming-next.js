@@ -19,7 +19,8 @@ function notListeningTo(participant) {
 
 async function listenToParticipant(room, participant) {
 	console.info(`Listening to participant ${participant.display}`)
-	await listenToFeed(room, participant.id)
+	const clientconnection = await listenToFeed(room, participant.id)
+	clientconnection.ondatachannel = console.log
 	userStore.removeUserFromPending(participant.display)
 	userStore.addUserToListening(participant.display)
 }
@@ -39,6 +40,7 @@ let disposeRoomHandler
 let clientListener
 let mediaPublisher
 let previousRoom
+let dataChannel
 
 const handleConnect = client => () => {
 	console.info("Creating client session")
@@ -69,6 +71,11 @@ const handleConnect = client => () => {
 		console.info("Publishing media to room:", room)
 		mediaPublisher = await publishClientMedia(room)
 		clientListener = await listenToNewClients(room)
+
+		dataChannel = mediaPublisher.createDataChannel("sendDataChannel", {
+			maxRetransmits: 0,
+			reliable: false,
+		})
 
 		console.info("Storing previous room")
 		previousRoom = room
@@ -105,3 +112,16 @@ export default function createJanusClient(token) {
 
 	return client
 }
+
+function sendDataMessage(message) {
+	console.log("dataChannel: ", dataChannel)
+	if (dataChannel) {
+		const { readyState } = dataChannel
+		console.log("dataChannel.readyState: ", readyState)
+		if (readyState === "open") {
+			dataChannel.send(message)
+		}
+	}
+}
+
+export { sendDataMessage }

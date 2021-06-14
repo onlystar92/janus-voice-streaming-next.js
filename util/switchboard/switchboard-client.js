@@ -96,7 +96,7 @@ function handleMessage(event) {
 					const currentUUID = position.player
 
 					// Check if player is in same server and world
-					if (shouldIgnorePosition(position, userPosition)) {
+					if (userPosition && shouldIgnorePosition(position, userPosition)) {
 						return
 					}
 
@@ -138,6 +138,8 @@ function handleError(error) {
 	console.info("Error:", error)
 }
 
+let socketInstance = null
+
 export default function createSwitchboardClient() {
 	const socket = new WebSocket("wss://vapi.veltpvp.com")
 	socket.onopen = handleOpen
@@ -149,5 +151,25 @@ export default function createSwitchboardClient() {
 		// TODO: Implement update settings method
 	}
 
+	socketInstance = socket
+
 	return { socket }
 }
+
+// Socket instance methods
+function requestConfigUpdate(key, value, operation = "SET") {
+	if (socketInstance) {
+		socketInstance.send(
+			JSON.stringify({
+				topic: "requestConfigUpdate",
+				command: {
+					operation,
+					key,
+					value,
+				},
+			}),
+		)
+	}
+}
+
+export { socketInstance, requestConfigUpdate }

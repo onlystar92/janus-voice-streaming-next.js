@@ -1,5 +1,7 @@
 import { makeAutoObservable } from "mobx"
 import * as R from "ramda"
+import { requestConfigUpdate } from "../util/switchboard/switchboard-client"
+import { sendDataMessage } from "../util/janus/janus-client"
 
 class Settings {
 	muted
@@ -20,10 +22,20 @@ class Settings {
 
 	setMuted(muted) {
 		this.muted = muted
+		requestConfigUpdate("muted", muted)
+		sendDataMessage({
+			uuid: userStore.uuid,
+			muted,
+		})
 	}
 
 	setDefen(defen) {
 		this.defen = defen
+		requestConfigUpdate("defen", defen)
+		sendDataMessage({
+			uuid: userStore.uuid,
+			defen,
+		})
 	}
 
 	setInputVolume(volume) {

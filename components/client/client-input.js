@@ -65,7 +65,7 @@ function SelfInput({ closeSession }) {
 	}
 
 	return (
-		<div>
+		<div className="flex flex-nowrap ml-2">
 			<button
 				className={clsx(
 					"p-2 md:p-2 lg:p-3",

@@ -120,6 +120,7 @@ async function listenFeed(room, feed, onTrack) {
 	await listenHandle.setRemoteAnswer(answer.sdp)
 
 	return {
+		peerConnection,
 		onConnect(callback) {
 			onConnect = callback
 		},

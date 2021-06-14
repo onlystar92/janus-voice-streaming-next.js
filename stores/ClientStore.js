@@ -14,10 +14,12 @@ class Client {
 	talking
 	stream
 	node
+	muted
 
-	constructor(volume = 100, talking = false) {
+	constructor(volume = 100, talking = false, muted = false) {
 		this.volume = volume
 		this.talking = talking
+		this.muted = muted
 		makeAutoObservable(this)
 	}
 
@@ -31,6 +33,10 @@ class Client {
 
 	setRoom(room) {
 		this.room = room
+	}
+
+	setMuted(muted) {
+		this.muted = muted
 	}
 
 	setStream(stream) {
