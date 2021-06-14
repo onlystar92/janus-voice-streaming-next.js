@@ -60,8 +60,8 @@ const Footer = () => {
 	const privacyLink = useRef()
 
 	return (
-		<footer className="relative py-8 px-6 bg-secondary-100 rounded-t-lg lg:py-14 lg:flex lg:justify-center lg:items-center lg:rounded-t-3xl">
-			<div className="text-primary-text lg:w-1/4">
+		<footer className="relative py-8 px-6 bg-secondary-100 rounded-t-lg lg:py-14 lg:flex lg:justify-center lg:items-start lg:rounded-t-3xl">
+			<div className="text-primary-text lg:ml-auto lg:w-1/4 xl:ml-64">
 				<h4 className="text-xl font-bold">About Us</h4>
 				<p className="mt-2 text-lg opacity-60">
 					VeltPvP is a custom Minecraft server specializing in Hardcore Factions (HCF). We support
@@ -90,9 +90,14 @@ const Footer = () => {
 					<QuickLink className="mt-2" text="Store" href="https://store.veltpvp.com" />
 					<QuickLink className="mt-2" text="Discord" href="https://www.discord.gg/velt" />
 				</ul>
+				<img
+					className="mt-8 w-32 md:hidden lg:block xl:hidden"
+					src="/hylist-logo.png"
+					alt="Logo of the compnay"
+				/>
 			</div>
 			<img
-				className="mt-8 w-32 sm:w-32 md:w-32 lg:absolute lg:right-12 lg:self-end"
+				className="mt-8 w-32 lg:absolute lg:right-12 lg:self-end lg:hidden xl:block"
 				src="/hylist-logo.png"
 				alt="Logo of the compnay"
 			/>
