@@ -186,7 +186,7 @@ function ClientDisplay({ client, closeSession }) {
 					},
 				)}
 			>
-				<div className="flex items-center flex-1">
+				<div className="flex items-center flex-1 min-w-0">
 					<ClientAvatar
 						client={client}
 						clientType={clientType}
@@ -199,6 +199,7 @@ function ClientDisplay({ client, closeSession }) {
 							"text-sm font-bold rounded-md",
 							"xl:px-4 xl:py-2",
 							"xl:rounded-xl xl:px-4 xl:py-2 xl:text-lg",
+							"truncate min-w-0",
 							{
 								"bg-primary-text text-secondary-text ": clientType === "self",
 								"bg-secondary-200 text-primary-text": clientType === "peer",
