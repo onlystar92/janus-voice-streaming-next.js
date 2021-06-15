@@ -89,6 +89,11 @@ class User {
 		this.listening = R.filter(R.complement(R.equals(user)), this.listening)
 	}
 
+	clearListener() {
+		this.pendingListen = []
+		this.listening = []
+	}
+
 	setToken(token) {
 		this.token = token
 	}

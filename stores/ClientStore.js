@@ -1,5 +1,6 @@
 import { makeAutoObservable } from "mobx"
 import * as R from "ramda"
+import userStore from "./User"
 
 // clientUUIDNotMatch :: String -> Boolean
 const clientUUIDNotMatch = R.complement(R.propEq("uuid"))
@@ -66,6 +67,10 @@ class ClientStore {
 
 	removeClient(uuid) {
 		this.clients = R.filter(clientUUIDNotMatch(uuid), this.clients)
+	}
+
+	clearPeerClients() {
+		this.clients = R.filter(R.propEq("uuid", userStore.uuid), this.clients)
 	}
 
 	findByUUID(uuid) {
