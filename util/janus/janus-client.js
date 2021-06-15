@@ -32,7 +32,7 @@ let mediaPublisher
 let clientListener
 let dataChannel
 
-function startMediaPublisher() {
+function startMediaPublisher(room) {
 	return new Promise(async (resolve) => {
 		mediaPublisher = await publishClientMedia(room)
 		resolve()
@@ -117,7 +117,7 @@ const handleConnect = client => () => {
 		}
 
 		console.info("Publishing media to room:", room)
-		await startMediaPublisher()
+		await startMediaPublisher(room)
 		await startClientListener(room)
 		await startDataChannel(mediaPublisher)
 	})
