@@ -5,6 +5,7 @@ import {
 	calculateForwardDirectionVector,
 	calculateHeadDirectionVector,
 } from "./positions"
+import { sendDataMessage } from "../janus/janus-client"
 
 function updateUserPosition(position) {
 	userStore.audioContext.listener.positionX.value = position.x
@@ -120,6 +121,34 @@ function handleMessage(event) {
 			console.info("Message to join room:", message.room)
 			userStore.setRoom(message.room || userStore.room)
 			break
+		case "updateConfig":
+			console.info("Message to update config")
+
+			let { muted, deafen } = message.config
+
+			//Convert values. They all come as strings in the config so need manually converted
+			muted = muted === "true" //Convert to boolean
+			deafen = deafen === "true" //Convert to boolean
+
+			//Handle muted
+			if (muted !== userStore.settings.muted) {
+				//Validate that there's a change
+
+				//Move the update to the status here
+				userStore.settings.muted = muted
+				sendDataMessage({
+					uuid: userStore.uuid,
+					muted,
+				})
+			}
+			//Handle defen
+			if (deafen !== userStore.settings.defen) {
+				userStore.settings.defen = deafen
+				sendDataMessage({
+					uuid: userStore.uuid,
+					deafen,
+				})
+			}
 	}
 }
 
@@ -163,9 +192,9 @@ function requestConfigUpdate(key, value, operation = "SET") {
 			JSON.stringify({
 				topic: "requestConfigUpdate",
 				command: {
-					operation,
-					key,
-					value,
+					operation: operation,
+					key: key,
+					value: value.toString(), //Config stores everything as strings
 				},
 			}),
 		)

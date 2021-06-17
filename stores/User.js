@@ -21,21 +21,13 @@ class Settings {
 	}
 
 	setMuted(muted) {
-		this.muted = muted
+		//Send a request to update the config. The listener will handle actually updating the value
 		requestConfigUpdate("muted", muted)
-		sendDataMessage({
-			uuid: userStore.uuid,
-			muted,
-		})
 	}
 
 	setDefen(defen) {
-		this.defen = defen
-		requestConfigUpdate("defen", defen)
-		sendDataMessage({
-			uuid: userStore.uuid,
-			defen,
-		})
+		//Send a request to update the config. The listener will handle actually updating the value
+		requestConfigUpdate("deafen", defen)
 	}
 
 	setInputVolume(volume) {
