@@ -1,50 +1,61 @@
 {
-	"name": "voice-velt",
-	"version": "0.1.0",
-	"private": true,
-	"scripts": {
-		"dev": "NODE_ENV=development node server.js",
-		"build": "next build",
-		"start": "next start"
-	},
-	"dependencies": {
-		"autoprefixer": "^10.2.5",
-		"clsx": "^1.1.1",
-		"hark": "^1.2.3",
-		"janus-videoroom-client": "^4.2.1",
-		"mobx": "^6.0.5",
-		"mobx-react-lite": "2.2.2",
-		"next": "^10.2.3",
-		"postcss": "^8.2.14",
-		"ramda": "^0.27.1",
-		"react": "^17.0.2",
-		"react-dom": "17.0.2",
-		"react-timer-hook": "^3.0.2",
-		"tailwind-scrollbar": "^1.3.0",
-		"tailwindcss": "^2.1.2"
-	},
-	"devDependencies": {
-		"husky": "^4.3.6",
-		"lint-staged": "^10.5.3",
-		"prettier": "^2.2.1"
-	},
-	"husky": {
-		"hooks": {
-			"pre-commit": "lint-staged"
-		}
-	},
-	"lint-staged": {
-		"*.js": [
-			"prettier --write"
-		]
-	},
-	"prettier": {
-		"printWidth": 100,
-		"semi": false,
-		"trailingComma": "all",
-		"singleQuote": false,
-		"useTabs": true,
-		"tabWidth": 2,
-		"arrowParens": "avoid"
-	}
+  "name": "voice-velt",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "NODE_ENV=development node server.js",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "prettier": "prettier --check '**/*.js'",
+    "prettier:fix": "prettier --write '**/*.js'",
+    "format": "yarn prettier:fix && yarn lint:fix"
+  },
+  "dependencies": {
+    "clsx": "^1.1.1",
+    "hark": "^1.2.3",
+    "janus-videoroom-client": "^4.2.1",
+    "next": "^11.0.0",
+    "ramda": "^0.27.1",
+    "react": "^17.0.2",
+    "react-dom": "17.0.2",
+    "react-timer-hook": "^3.0.2",
+    "rxjs": "^7.1.0",
+    "rxjs-hooks": "^0.7.0",
+    "tailwind-scrollbar": "^1.3.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.2.6",
+    "babel-eslint": "^10.1.0",
+    "eslint": "^7.29.0",
+    "eslint-config-airbnb": "^18.2.1",
+    "eslint-config-next": "^11.0.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-jsx-a11y": "^6.4.1",
+    "eslint-plugin-prettier": "^3.4.0",
+    "husky": "^4.3.6",
+    "lint-staged": "^10.5.3",
+    "postcss": "^8.3.5",
+    "prettier": "^2.3.1",
+    "pretty-quick": "^3.1.1",
+    "tailwindcss": "^2.2.4"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged && pretty-quick --staged"
+    }
+  },
+  "lint-staged": {
+    "*.js": "eslint --cache --fix"
+  },
+  "prettier": {
+    "useTabs": false,
+    "tabWidth": 2,
+    "printWidth": 80,
+    "semi": true,
+    "singleQuote": true,
+    "trailingComma": "es5",
+    "arrowParens": "always"
+  }
 }

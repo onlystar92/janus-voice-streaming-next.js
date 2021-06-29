@@ -1,6 +1,10 @@
 {
 	"compilerOptions": {
-		"moduleResolution": "node",
-		"baseUrl": "."
-	}
+		"baseUrl": ".",
+		"module": "commonJS",
+		"target": "es2015",
+	},
+	"exclude": [
+		"node_modules"
+	],
 }

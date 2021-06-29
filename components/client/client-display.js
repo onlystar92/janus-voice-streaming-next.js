@@ -1,230 +1,180 @@
-import { useEffect, useRef, useState } from "react"
-import { autorun } from "mobx"
-import { observer } from "mobx-react-lite"
-import clsx from "clsx"
-import userStore from "stores/User"
-import ClientInput from "./client-input"
-import hark from "hark"
-import Slider from "../slider"
+import { memo, useEffect, useRef, useState } from 'react';
+import clsx from 'clsx';
+import hark from 'hark';
+import { equals, isNil, prop } from 'ramda';
+import { audio$ } from 'observables/audio';
+import { user$ } from 'observables/user';
+import { settings$ } from 'observables/settings';
+import { distinct, map, pluck } from 'rxjs/operators';
+import { useObservable } from 'rxjs-hooks';
+import { findDeviceByLabel } from 'util/audio';
+import Slider from '../slider';
+import ClientInput from './client-input';
+import ClientAvatar from './client-avatar';
 
-async function findDeviceIdByName(name) {
-	const devices = await navigator.mediaDevices.enumerateDevices()
-	return devices.find(device => device.label === name)
-}
-
-function fetchUserAvatar(username) {
-	return fetch(`/api/avatar?user=${username}`)
-}
-
-function ClientAvatar({ client, isMuted, onClick, clientType }) {
-	const { username, muted } = client
-	const [avatar, setAvatar] = useState("/steve-avatar.png")
-
-	useEffect(() => {
-		if (!username) return
-
-		async function resolveClientAvatar() {
-			const response = await fetchUserAvatar(username)
-
-			if (!response || response.status === 500) {
-				return
-			}
-
-			const parsedResponse = await response.json()
-			setAvatar(parsedResponse.avatar)
-		}
-
-		resolveClientAvatar()
-	}, [username])
-
-	useEffect(() => {
-		return autorun(() => {
-			const stream = client.stream
-
-			if (!stream) return
-
-			stream.getTracks()[0].onmute = function () {
-				console.log("stream muted", "muted")
-			}
-
-			stream.getTracks()[0].onunmute = function () {
-				console.log("stream unmuted", "unmuted")
-			}
-		})
-	}, [])
-
-	const isSelf = clientType === "self"
-
-	return (
-		<div
-			className="flex-shrink-0 w-8 h-16 lg:w-14 relative flex items-center justify-center"
-			onClick={onClick}
-		>
-			<img className="w-full h-full" src={avatar} alt={username + "'s avatar"} />
-			{!isSelf && isMuted ? (
-				<img className="absolute w-9/12" src="/mute.png" />
-			) : !isSelf && muted ? (
-				<img className="absolute w-9/12" src="/muted.png" />
-			) : null}
-		</div>
-	)
-}
-
-function resolveClientType(client) {
-	return client.username === userStore.username ? "self" : "peer"
-}
+const activeMuted$ = settings$.pipe(map(prop('muted')), distinct());
+const activeUUID$ = user$.pipe(map(prop('uuid')), distinct());
+const audioContext$ = audio$.pipe(map(prop('audioContext')), distinct());
+const outputVolume$ = settings$.pipe(pluck('outputVolume'), distinct());
+const outputDevice$ = settings$.pipe(pluck('outputDevice'), distinct());
 
 function ClientDisplay({ client, closeSession }) {
-	const clientType = resolveClientType(client)
-	const audioRef = useRef()
-	const [isSpeaking, setIsSpeaking] = useState(false)
-	const [showVolumeSlider, setShowVolumeSlider] = useState(false)
-	const isUser = userStore.uuid === client.uuid
-	const isMuted = isUser ? userStore.settings.muted : client.muted
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const activeUUID = useObservable(() => activeUUID$);
+  const activeMuted = useObservable(() => activeMuted$, false);
+  const audioContext = useObservable(() => audioContext$, false);
+  const audioRef = useRef();
+  const analyzerRef = useRef();
 
-	useEffect(() => {
-		if (clientType !== "self" || client.stream) {
-			return
-		}
+  // async function analyzeStream() {
+  //   if (analyzerRef.current) clearTimeout(analyzerRef.current);
+  //   const { username } = client;
+  //   console.info(`Analyzer for client ${username}`);
+  //   console.info(`Duration: ${audioRef.current?.duration}`);
+  //   console.info(`Paused: ${audioRef.current?.paused}`);
+  //   console.info(`Context state ${audioContext.state}`);
+  //   analyzerRef.current = setTimeout(analyzeStream, 10000);
+  // }
 
-		async function assignSelfStream() {
-			const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-			client.setStream(stream)
-		}
+  // Handle stream change
+  useEffect(() => {
+    const { stream } = client;
 
-		assignSelfStream()
-	}, [])
+    if (!audioContext || !stream) return undefined;
 
-	// Handle stream change
-	useEffect(() => {
-		const disposeStreamHandler = autorun(() => {
-			const stream = client.stream
+    console.info('Started speech analyzer');
+    const options = {};
+    const speechEvents = hark(stream, options);
 
-			if (!stream) {
-				return
-			}
+    speechEvents.on('speaking', () => {
+      setIsSpeaking(true);
+    });
 
-			console.info("Started speech analyzer")
-			let options = {}
-			let speechEvents = hark(stream, options)
+    speechEvents.on('stopped_speaking', () => {
+      setIsSpeaking(false);
+    });
 
-			speechEvents.on("speaking", () => {
-				setIsSpeaking(true)
-			})
+    console.info('Updating audio stream');
+    console.info('Audio ref:', audioRef.current);
+    if (!audioRef.current) return undefined;
+    console.info('Playing audio stream:', stream);
+    audioRef.current.srcObject = stream;
 
-			speechEvents.on("stopped_speaking", () => {
-				setIsSpeaking(false)
-			})
+    console.info('Analyzing stream');
+    // analyzeStream();
 
-			console.info("Updating audio stream")
-			if (!audioRef.current) {
-				return
-			}
+    if (audioContext.state === 'suspended') {
+      console.info('Resuming audio context');
+      audioContext.resume();
+    }
 
-			audioRef.current.srcObject = stream
-			console.info("Updated audio stream")
-		})
+    return () => {
+      // Stop analyzer
+      clearTimeout(analyzerRef.current);
+    };
+  }, [client.stream, audioContext]);
 
-		return () => disposeStreamHandler()
-	}, [])
+  useEffect(() => {
+    // Handle master volume change
+    const outputVolumeSubscription = outputVolume$.subscribe((outputVolume) => {
+      if (isNil(audioRef.current)) return;
+      console.info('Changing output volume to:', outputVolume);
+      audioRef.current.volume = outputVolume;
+    });
 
-	// Handle preferred output change
-	useEffect(() => {
-		return autorun(async () => {
-			const preferredOutput = userStore.settings.preferredOutput
+    // Handle output device change
+    const outputDeviceSubscription = outputDevice$.subscribe(
+      async (outputDevice) => {
+        if (isNil(outputDevice)) return;
+        let device = await findDeviceByLabel(outputDevice);
 
-			if (!audioRef.current || !preferredOutput) {
-				return
-			}
+        if (!device || !device.deviceId) {
+          const [firstDevice] = await navigator.mediaDevices.enumerateDevices();
+          if (!firstDevice || !firstDevice.deviceId) return;
+          device = firstDevice;
+        }
 
-			if (!audioRef.current.setSinkId) {
-				return
-			}
+        if (isNil(audioRef.current)) return;
+        await audioRef.current.setSinkId(device.deviceId);
+      }
+    );
+    return () => {
+      // Unsubscribe
+      outputVolumeSubscription.unsubscribe();
+      outputDeviceSubscription.unsubscribe();
+    };
+  }, []);
 
-			let device = await findDeviceIdByName(preferredOutput)
+  const isUser = equals(activeUUID, client.uuid);
+  const isMuted = isUser ? activeMuted : client.muted;
+  const clientType = isUser ? 'self' : 'peer';
 
-			if (!device || !device.deviceId) {
-				const devices = await navigator.mediaDevices.enumerateDevices()
+  function toggleVolumeSlider() {
+    if (!isUser) return;
+    setShowVolumeSlider(!showVolumeSlider);
+  }
 
-				if (devices.length === 0 || !devices[0]) {
-					return
-				}
-
-				audioRef.current.setSinkId(devices[0].deviceId)
-				return
-			}
-
-			audioRef.current.setSinkId(device.deviceId)
-		})
-	}, [])
-
-	// Handle master volume change
-	useEffect(() => {
-		return autorun(() => {
-			if (!audioRef.current) {
-				return
-			}
-
-			console.info("Changing output volume to:", userStore.settings.outputVolume)
-			audioRef.current.audio = userStore.settings.outputVolume
-		})
-	}, [])
-
-	const toggleVolumeSlider = () => {
-		if (isUser) {
-			setShowVolumeSlider(!showVolumeSlider)
-		}
-	}
-
-	return (
-		<>
-			<div
-				className={clsx(
-					{ "fixed left-12 bottom-8 w-96": isUser },
-					"mt-2 z-10 p-2 px-2 flex justify-between items-center rounded-lg shadow-sm bg-primary-200",
-					"sm:m-0",
-					"lg:px-4",
-					{
-						"ring-2 ring-green-700": (isUser && !isMuted && isSpeaking) || (!isUser && isSpeaking),
-					},
-				)}
-			>
-				<div className="flex items-center flex-1 min-w-0">
-					<ClientAvatar
-						client={client}
-						clientType={clientType}
-						isMuted={isMuted}
-						onClick={toggleVolumeSlider}
-					/>
-					<span
-						className={clsx(
-							"px-2 py-1 ml-2",
-							"text-sm font-bold rounded-md",
-							"xl:px-4 xl:py-2",
-							"xl:rounded-xl xl:px-4 xl:py-2 xl:text-lg",
-							"truncate min-w-0",
-							{
-								"bg-primary-text text-secondary-text ": clientType === "self",
-								"bg-secondary-200 text-primary-text": clientType === "peer",
-							},
-						)}
-					>
-						{client.username}
-					</span>
-				</div>
-				{showVolumeSlider ? (
-					<div className="w-56 text-white">
-						<Slider variant="line" initial={100} min={0} max={100} />
-					</div>
-				) : (
-					<ClientInput client={client} type={clientType} closeSession={closeSession} />
-				)}
-			</div>
-			{clientType === "peer" && (
-				<audio ref={audioRef} className="hidden" controls={false} muted autoPlay playsInline />
-			)}
-		</>
-	)
+  return (
+    <>
+      <div
+        className={clsx(
+          { 'fixed left-12 bottom-8 w-96': isUser },
+          'mt-2 z-10 p-2 px-2 flex justify-between items-center rounded-lg shadow-sm bg-primary-200',
+          'sm:m-0',
+          'lg:px-4',
+          {
+            'ring-2 ring-green-700':
+              (isUser && !isMuted && isSpeaking) || (!isUser && isSpeaking),
+          }
+        )}
+      >
+        <div className="flex items-center flex-1 min-w-0">
+          <ClientAvatar
+            client={client}
+            clientType={clientType}
+            onClick={toggleVolumeSlider}
+          />
+          <span
+            className={clsx(
+              'px-2 py-1 ml-2',
+              'text-sm font-bold rounded-md',
+              'xl:px-4 xl:py-2',
+              'xl:rounded-xl xl:px-4 xl:py-2 xl:text-lg',
+              'truncate min-w-0',
+              {
+                'bg-primary-text text-secondary-text ': clientType === 'self',
+                'bg-secondary-200 text-primary-text': clientType === 'peer',
+              }
+            )}
+          >
+            {client.username}
+          </span>
+        </div>
+        {showVolumeSlider ? (
+          <div className="w-56 text-white">
+            <Slider variant="line" initial={100} min={0} max={100} />
+          </div>
+        ) : (
+          <ClientInput
+            client={client}
+            type={clientType}
+            closeSession={closeSession}
+          />
+        )}
+        {clientType === 'peer' && (
+          <audio
+            ref={audioRef}
+            className="hidden w-0 h-0"
+            controls={false}
+            muted
+            autoPlay
+            playsInline
+          />
+        )}
+      </div>
+    </>
+  );
 }
 
-export default observer(ClientDisplay)
+export default memo(ClientDisplay);

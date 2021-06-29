@@ -1,68 +1,55 @@
-import { useState, useRef, useEffect } from "react"
-import * as R from "ramda"
-import AudioMeter from "../util/sound-meter"
-import Slider from "./slider"
-import userStore from "stores/User"
-import { autorun } from "mobx"
+import { isNil, prop } from 'ramda';
+import { useEffect, useRef, useState } from 'react';
+import { audio$ } from 'observables/audio';
+import { distinct, map } from 'rxjs/operators';
+import { useObservable } from 'rxjs-hooks';
+import Slider from './slider';
+
+const audioMeter$ = audio$.pipe(map(prop('audioMeter')), distinct());
 
 function SensitivityIndicator() {
-	const [sensitivity, setSensitivity] = useState(0)
-	const audioMeter = useRef()
-	const listenTask = useRef()
+  const audioMeter = useObservable(() => audioMeter$);
+  const [sensitivity, setSensitivity] = useState(0);
+  const listenTask = useRef();
 
-	function listenToVolumeChanges(delay) {
-		if (sensitivity === audioMeter.current.volume) {
-			return setTimeout(() => listenToVolumeChanges(delay), delay)
-		}
+  function listenToVolumeChanges(delay, meter) {
+    if (isNil(prop('volume', meter))) {
+      return clearTimeout(listenTask.current);
+    }
 
-		setSensitivity(audioMeter.current.volume)
-		return setTimeout(() => listenToVolumeChanges(delay), delay)
-	}
+    if (sensitivity === meter.volume) {
+      return setTimeout(() => listenToVolumeChanges(delay), delay);
+    }
 
-	useEffect(() => {
-		const disposeAuidoMeter = autorun(async () => {
-			const context = userStore.audioContext
+    setSensitivity(meter.volume);
+    return setTimeout(() => listenToVolumeChanges(delay), delay);
+  }
 
-			if (!context) {
-				return
-			}
+  useEffect(() => {
+    if (!audioMeter) return undefined;
 
-			const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-			const options = { mediaStream: stream }
-			const mediaStreamSource = new MediaStreamAudioSourceNode(context, options)
+    // Clear timeout of previous task
+    if (listenTask.current) {
+      clearTimeout(listenTask.current);
+    }
 
-			// Create a new volume meter and connect it.
-			audioMeter.current = AudioMeter(context)
-			mediaStreamSource.connect(audioMeter.current)
-		})
+    // Assign new task
+    listenTask.current = listenToVolumeChanges(20, audioMeter);
+    return () => {
+      clearTimeout(listenTask);
+    };
+  }, [audioMeter]);
 
-		return () => disposeAuidoMeter()
-	}, [])
-
-	useEffect(() => {
-		if (!audioMeter.current || R.propEq("volume", null, audioMeter.current)) {
-			return
-		}
-
-		// Clear timeout of previous task
-		if (listenTask.current) {
-			clearTimeout(listenTask.current)
-		}
-
-		// Assign new task
-		listenTask.current = listenToVolumeChanges(20)
-	}, [audioMeter.current])
-
-	return (
-		<Slider
-			className="mt-2"
-			initial={sensitivity * 100 * 1.4}
-			min={0}
-			max={100}
-			thumb={false}
-			disabled={true}
-		/>
-	)
+  return (
+    <Slider
+      className="mt-2"
+      initial={sensitivity * 100 * 1.4}
+      min={0}
+      max={100}
+      thumb={false}
+      disabled
+    />
+  );
 }
 
-export default SensitivityIndicator
+export default SensitivityIndicator;

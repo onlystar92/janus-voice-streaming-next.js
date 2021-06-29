@@ -1,88 +1,82 @@
-import React, { useCallback, useEffect, useState } from "react"
-import Head from "next/head"
-import { observer } from "mobx-react-lite"
-import createJanusClient from "util/janus/janus-client"
-import userStore from "stores/User"
-import clientStore from "stores/ClientStore"
-import Footer from "components/footer"
-import Navigation from "components/navigation"
-import ClientListView from "components/client/client-list-view"
+import ClientListView from 'components/client/client-list-view';
+import Footer from 'components/footer';
+import Navigation from 'components/navigation';
+import Head from 'next/head';
+import { setAudioContext } from 'observables/audio';
+import { user$ } from 'observables/user';
+import { prop } from 'ramda';
+import { useEffect, useState } from 'react';
+import { map, take } from 'rxjs/operators';
+import { createAudioContext } from 'util/audio';
+import createJanusClient from 'util/janus/janus-client';
 
-function createAudioContext() {
-	const audioContext = new AudioContext() || new webkitAudioContext()
-
-	// Resume audio context if suspended
-	if (audioContext.state === "suspended") {
-		audioContext.resume()
-	}
-
-	// Set default listener position
-	audioContext.listener.positionX.value = 0
-	audioContext.listener.positionY.value = 0
-	audioContext.listener.positionZ.value = 0
-	audioContext.listener.forwardX.value = 0
-	audioContext.listener.forwardY.value = 0
-	audioContext.listener.forwardZ.value = 0
-	audioContext.listener.upX.value = 0
-	audioContext.listener.upY.value = 0
-	audioContext.listener.upZ.value = 0
-
-	// Initialize audio context
-	userStore.setAudioContext(audioContext)
-}
+const userToken$ = user$.pipe(take(1), map(prop('token')));
 
 function Home() {
-	const [janusClient, setJanusClient] = useState(null)
+  const [janusClient, setJanusClient] = useState(null);
 
-	// Disconnects the janus client
-	const closeSession = useCallback(() => {
-		if (!janusClient || !janusClient.isConnected()) return
-		janusClient.disconnect()
-		setJanusClient(null)
-	}, [janusClient])
+  // Disconnects the janus client
+  function closeSession() {
+    if (!janusClient || !janusClient.isConnected()) {
+      return;
+    }
 
-	useEffect(() => {
-		try {
-			createAudioContext()
-		} catch (error) {
-			return console.error(error)
-		}
+    janusClient.disconnect();
+    setJanusClient(null);
+  }
 
-		// Initialize client
-		const janusClient = createJanusClient(userStore.token)
-		janusClient.connect()
-		setJanusClient(janusClient)
+  useEffect(() => {
+    userToken$.subscribe((token) => {
+      console.info('Token', token);
 
-		// Close session on component unrender
-		return closeSession
-	}, [])
+      if (!token) return;
+      if (janusClient && janusClient.isConnected()) janusClient.disconnect();
 
-	return (
-		<div>
-			<Head>
-				<title>Velt Voice</title>
-				<link rel="icon" href="/favicon.ico" />
-			</Head>
-			<main className="bg-primary-100">
-				<Navigation />
-				<ClientListView clients={clientStore.clients} closeSession={closeSession} />
-				<Footer />
-				<div className="fixed bottom-5 right-5 z-50 mt-2 p-2 px-2 flex flex-col justify-center items-center rounded-lg shadow-sm bg-primary-200 sm:m-0 lg:px-4">
-					<div
-						className="flex flex-row justify-center items-baseline h-12 w-20"
-						id="networkQuality"
-					>
-						<div className="flex-1 mx-1 h-1/5"></div>
-						<div className="flex-1 mx-1 h-2/5"></div>
-						<div className="flex-1 mx-1 h-3/5"></div>
-						<div className="flex-1 mx-1 h-4/5"></div>
-						<div className="flex-1 mx-1 h-full"></div>
-					</div>
-					<div className="text-primary-text text-sm mt-2 text-center" id="duration" />
-				</div>
-			</main>
-		</div>
-	)
+      console.info('Initializing voice client');
+
+      // Initialize audio context
+      const audioContext = createAudioContext();
+      setAudioContext(audioContext);
+      console.info('Assigned audio context');
+
+      // Connect and assign janus client
+      const client = createJanusClient(token);
+      client.connect();
+      setJanusClient(client);
+      console.info('Assigned janus client');
+    });
+    return closeSession;
+  }, []);
+
+  return (
+    <div>
+      <Head>
+        <title>Velt Voice</title>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <main className="bg-primary-100">
+        <Navigation />
+        <ClientListView closeSession={closeSession} />
+        <Footer />
+        <div className="fixed bottom-5 right-5 z-50 mt-2 p-2 px-2 flex flex-col justify-center items-center rounded-lg shadow-sm bg-primary-200 sm:m-0 lg:px-4">
+          <div
+            className="flex flex-row justify-center items-baseline h-12 w-20"
+            id="networkQuality"
+          >
+            <div className="flex-1 mx-1 h-1/5" />
+            <div className="flex-1 mx-1 h-2/5" />
+            <div className="flex-1 mx-1 h-3/5" />
+            <div className="flex-1 mx-1 h-4/5" />
+            <div className="flex-1 mx-1 h-full" />
+          </div>
+          <div
+            className="text-primary-text text-sm mt-2 text-center"
+            id="duration"
+          />
+        </div>
+      </main>
+    </div>
+  );
 }
 
-export default observer(Home)
+export default Home;

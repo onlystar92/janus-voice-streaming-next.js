@@ -1,131 +1,176 @@
-import { autorun } from "mobx"
-import * as R from "ramda"
-import clientStore from "stores/ClientStore"
-import userStore from "stores/User"
-import { publishAudioTracks, listenFeed, listParticipants } from "./janus/video-room"
+import { prop, pick, propEq, find } from 'ramda';
+import {
+  clients$,
+  getActiveClient,
+  removeClient,
+  softRemove,
+  updateClient,
+} from 'observables/clients';
+import { settings$ } from 'observables/settings';
+import { distinct, map, pluck, take } from 'rxjs/operators';
+import { audio$, removeListening } from 'observables/audio';
+import { user$ } from 'observables/user';
+import { listenFeed, publishAudioTracks } from './janus/video-room';
+import { findDeviceByLabel, getDeviceMediaStream } from './audio';
+import takeLatest from './observable/take-latest';
 
-async function enumerateMediaDevices() {
-	return await navigator.mediaDevices.enumerateDevices()
+function replaceSenderAudioTracks(sender, stream) {
+  const audioTrack = stream.getAudioTracks()[0];
+  sender.replaceTrack(audioTrack);
 }
 
-async function findDeviceIdByName(name) {
-	const devices = await enumerateMediaDevices()
-	return devices.find(device => device.label === name)
-}
+const inputDevice$ = settings$.pipe(map(prop('inputDevice')), distinct());
+const muted$ = settings$.pipe(map(prop('muted')), distinct());
+
+const userData$ = user$.pipe(take(1), map(pick(['uuid', 'token'])));
+const audioSession$ = audio$.pipe(take(1), map(prop('session')));
 
 async function publishClientMedia(room) {
-	const { id, peerConnection, trackSender } = await publishAudioTracks(room)
+  console.info('Publishing client media');
+  const userData = await takeLatest(userData$);
+  const audioSession = await takeLatest(audioSession$);
 
-	const disposeInputHandler = autorun(async () => {
-		const preferredInput = userStore.settings.preferredInput
-		const device = await findDeviceIdByName(preferredInput)
+  const { id, peerConnection, trackSender } = await publishAudioTracks(
+    userData,
+    audioSession,
+    room
+  );
 
-		if (!device || !device.deviceId) {
-			return
-		}
+  const inputDeviceSubscription = inputDevice$.subscribe(
+    async ({ preferredInput }) => {
+      const device = await findDeviceByLabel(preferredInput);
 
-		getUserMediaStream({ audio: { deviceId: device.deviceId } })
-			.then(newStream => {
-				const audioTrack = newStream.getAudioTracks()[0]
-				trackSender.replaceTrack(audioTrack)
-				console.info("Changed input device to:", audioTrack)
-			})
-			.catch(error => {
-				console.error(`Failed to get media stream from device '${preferredInput}':`, error)
-			})
-	})
+      if (!device) {
+        console.info('Ignoring input device update. Reason: Device is null.');
+        return;
+      }
 
-	const disposeMuteHandler = autorun(() => {
-		console.info("Muted:", userStore.settings.muted)
-		trackSender.track.enabled = !userStore.settings.muted
-	})
+      const stream = await getDeviceMediaStream(device);
 
-	// Handle connection state
-	peerConnection.onconnectionstatechange = function (event) {
-		switch (peerConnection.connectionState) {
-			case "connected":
-				console.info("User publishing stream:", id)
-				break
-			case "disconnected":
-			case "failed":
-				console.info("User media stream disconnected")
-				break
-			case "closed":
-				console.info("Connection closed")
-				disposeMuteHandler()
-				disposeInputHandler()
-				break
-		}
-	}
+      console.info('Changed input device to:', device.deviceId);
+      await replaceSenderAudioTracks(trackSender, stream);
 
-	return peerConnection
+      console.info('Assigning new audio stream');
+      const activeClient = await takeLatest(getActiveClient());
+      updateClient(activeClient.uuid, { stream });
+    }
+  );
+
+  const muteSubscription = muted$.subscribe(({ muted }) => {
+    console.info('Muted:', muted);
+    trackSender.track.enabled = !muted;
+  });
+
+  // Handle connection state
+  peerConnection.onconnectionstatechange = () => {
+    switch (peerConnection.connectionState) {
+      case 'connected':
+        console.info('User publishing stream:', id);
+        break;
+      case 'disconnected':
+      case 'failed':
+        console.info('User media stream disconnected');
+        break;
+      case 'closed':
+        console.info('Connection closed');
+        inputDeviceSubscription.unsubscribe();
+        muteSubscription.unsubscribe();
+        break;
+      default:
+        break;
+    }
+  };
+
+  return peerConnection;
 }
 
 const audioPhysicsConfig = {
-	directionalAudio: true,
-	panningModel: "HRTF", //human head
-	distanceModel: "inverse", //inverse, linear, or exponential
-	maxDistance: 80, //max distance for audio rolloff
-	rolloffFactor: 0.5, //higher means faster volume loss
-	refDistance: 1, //reference distance for reducing volume
-}
+  directionalAudio: true,
+  panningModel: 'HRTF', // human head
+  distanceModel: 'inverse', // inverse, linear, or exponential
+  maxDistance: 80, // max distance for audio rolloff
+  rolloffFactor: 0.5, // higher means faster volume loss
+  refDistance: 1, // reference distance for reducing volume
+};
+
+const mediaListener$ = audio$.pipe(take(1), pluck('mediaListener'));
+const audioContext$ = audio$.pipe(take(1), pluck('audioContext'));
 
 async function listenToFeed(room, feed) {
-	let client
+  let clientId;
 
-	async function onStreamReceived(event) {
-		console.info("Finding participant", feed, "in room")
-		const listResponse = await listParticipants(room)
-		const participant = listResponse.participants.find(R.propEq("id", feed))
-		client = clientStore.findByUUID(participant.display)
+  async function onStreamReceive(event) {
+    console.info('Finding participant', feed, 'in room');
+    const mediaListener = await takeLatest(mediaListener$);
+    const participant = mediaListener.findParticipant(feed);
+    console.info('Found participant:', participant);
 
-		console.info("Initializing panner node")
-		const context = userStore.audioContext
-		const stream = event.streams[0]
+    const peerClient = await takeLatest(
+      clients$.pipe(take(1), map(find(propEq('uuid', participant.display))))
+    );
 
-		const options = {
-			mediaStream: stream,
-		}
-		const audioSource = new MediaStreamAudioSourceNode(context, options)
-		const node = new PannerNode(context, audioPhysicsConfig)
+    if (!peerClient) return;
 
-		//default position is zero, facing south.
-		//note that for default cone values, orientation of speaker isn't significant
-		node.positionX.value = 0
-		node.positionY.value = 0
-		node.positionZ.value = 0
+    console.info('Found peer client:', peerClient);
 
-		//Hook everything up
-		audioSource.connect(node)
-		node.connect(context.destination)
+    // Cache client id
+    clientId = peerClient.uuid;
 
-		// Assign node and stream to client
-		client.setNode(node)
-		client.setStream(stream)
-	}
+    console.info(`Initializing ${peerClient.username}'s panner node`);
+    const audioContext = await takeLatest(audioContext$);
 
-	const { onConnect, onDisconnect, onClose, peerConnection } = await listenFeed(
-		room,
-		feed,
-		onStreamReceived,
-	)
+    // Create media source
+    const stream = event.streams[0];
+    const audioSource = audioContext.createMediaStreamSource(stream);
 
-	onConnect(async event => {
-		console.info("Connectd to feed:", feed)
-	})
+    // Create panner node
+    const node = new PannerNode(audioContext, audioPhysicsConfig);
 
-	onDisconnect(async event => {
-		console.info("Stopped listening to feed:", feed)
-		clientStore.removeClient(client.uuid)
-		userStore.removeUserFromPending(client.uuid)
-		userStore.removeUserFromListening(client.uuid)
-	})
+    // default position is zero, facing south.
+    // note that for default cone values, orientation of speaker
+    // isn't significant
+    node.positionX.value = 0;
+    node.positionY.value = 0;
+    node.positionZ.value = 0;
 
-	onClose(async event => {
-		console.info("Connection closed")
-	})
+    // Hook everything up
+    audioSource.connect(node);
+    node.connect(audioContext.destination);
+    console.info(
+      `Connected ${peerClient.username}'s panner node to audioContext`
+    );
 
-	return peerConnection
+    // Assign node and stream to client
+    updateClient(peerClient.uuid, { node, stream });
+    console.info(
+      `Assigned ${peerClient.username}'s client a PannerNode and a Stream`
+    );
+  }
+
+  const session = await takeLatest(audioSession$);
+  const { peerConnection, onConnect, onDisconnect, onClose } = await listenFeed(
+    session,
+    room,
+    feed,
+    onStreamReceive
+  );
+
+  onConnect(() => {
+    console.info('Connected to feed:', feed);
+  });
+
+  onDisconnect(() => {
+    console.info('Disconnected from feed:', feed);
+    softRemove(clientId);
+  });
+
+  onClose(() => {
+    console.info('Closed connection to feed:', feed);
+    removeClient(clientId);
+    removeListening(clientId);
+  });
+
+  return peerConnection;
 }
 
-export { publishClientMedia, listenToFeed }
+export { publishClientMedia, listenToFeed };
