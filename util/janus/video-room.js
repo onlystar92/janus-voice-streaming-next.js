@@ -27,66 +27,6 @@ function handleIceCandidate(handle, peerConnection) {
   };
 }
 
-function average(values) {
-  const sumValues = values.reduce((sum, value) => sum + value, 0);
-  return sumValues / values.length;
-}
-
-function msToTime(duration) {
-  let seconds = Math.floor((duration / 1000) % 60);
-  let minutes = Math.floor((duration / (1000 * 60)) % 60);
-  let hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
-
-  hours = hours < 10 ? `0${hours}` : hours;
-  minutes = minutes < 10 ? `0${minutes}` : minutes;
-  seconds = seconds < 10 ? `0${seconds}` : seconds;
-
-  return `${hours}:${minutes}:${seconds}`;
-}
-
-function showPeerConnectionStatus(connection) {
-  const start = Date.now();
-
-  window.setInterval(() => {
-    const rttMeasures = [];
-    const sender = connection.getSenders()[0];
-
-    // Show Duration
-    const delta = Date.now() - start; // milliseconds elapsed since start
-    document.getElementById('duration').innerText = msToTime(delta);
-
-    sender.getStats(null).then((stats) => {
-      stats.forEach((report) => {
-        if (report.type === 'remote-inbound-rtp') {
-          rttMeasures.push(report.roundTripTime);
-          const avgRtt = average(rttMeasures);
-
-          let emodel = 0;
-          if (avgRtt / 2 >= 0.5) emodel = 1;
-          else if (avgRtt / 2 >= 0.4) emodel = 2;
-          else if (avgRtt / 2 >= 0.3) emodel = 3;
-          else if (avgRtt / 2 >= 0.2) emodel = 4;
-          else if (avgRtt / 2 < 0.2) emodel = 5;
-
-          // Draw Network Quality Bar
-          const elements = document.querySelectorAll('#networkQuality > div');
-          elements.forEach((el, key) => {
-            if (emodel - 1 >= key) {
-              // These claseses need to be added to the class purge safe list
-              // in tailwind.config.js
-              el.classList.remove('bg-gray-600');
-              el.classList.add('bg-gray-300');
-            } else {
-              el.classList.remove('bg-gray-300');
-              el.classList.add('bg-gray-600');
-            }
-          });
-        }
-      });
-    });
-  }, 1000);
-}
-
 async function publishClientMediaStream({
   session,
   uuid,
@@ -121,9 +61,6 @@ async function publishAudioTracks(
   // Create peer connection with audio tracks
   const peerConnection = createPeerConnection();
   const trackSender = peerConnection.addTrack(audioTrack, stream);
-
-  // Show conection stability status
-  showPeerConnectionStatus(peerConnection);
 
   // Create peer connection offer
   const offer = await peerConnection.createOffer();

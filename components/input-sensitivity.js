@@ -36,7 +36,7 @@ function SensitivityIndicator() {
     // Assign new task
     listenTask.current = listenToVolumeChanges(20, audioMeter);
     return () => {
-      clearTimeout(listenTask);
+      clearTimeout(listenTask.current);
     };
   }, [audioMeter]);
 

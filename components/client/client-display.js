@@ -11,6 +11,7 @@ import { findDeviceByLabel } from 'util/audio';
 import Slider from '../slider';
 import ClientInput from './client-input';
 import ClientAvatar from './client-avatar';
+import ClientStatus from './client-status';
 
 const activeMuted$ = settings$.pipe(map(prop('muted')), distinct());
 const activeUUID$ = user$.pipe(map(prop('uuid')), distinct());
@@ -21,9 +22,11 @@ const outputDevice$ = settings$.pipe(pluck('outputDevice'), distinct());
 function ClientDisplay({ client, closeSession }) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [showStatus, setShowStatus] = useState(true);
   const activeUUID = useObservable(() => activeUUID$);
   const activeMuted = useObservable(() => activeMuted$, false);
   const audioContext = useObservable(() => audioContext$, false);
+  const container = useRef();
   const audioRef = useRef();
   const analyzerRef = useRef();
 
@@ -99,6 +102,7 @@ function ClientDisplay({ client, closeSession }) {
         await audioRef.current.setSinkId(device.deviceId);
       }
     );
+
     return () => {
       // Unsubscribe
       outputVolumeSubscription.unsubscribe();
@@ -110,25 +114,43 @@ function ClientDisplay({ client, closeSession }) {
   const isMuted = isUser ? activeMuted : client.muted;
   const clientType = isUser ? 'self' : 'peer';
 
+  useEffect(() => {
+    if (!container) return;
+    setTimeout(() => setShowStatus(false), 10000);
+  }, [isUser]);
+
   function toggleVolumeSlider() {
     if (!isUser) return;
     setShowVolumeSlider(!showVolumeSlider);
   }
 
   return (
-    <>
-      <div
-        className={clsx(
-          { 'fixed left-12 bottom-8 w-96': isUser },
-          'mt-2 z-10 p-2 px-2 flex justify-between items-center rounded-lg shadow-sm bg-primary-200',
-          'sm:m-0',
-          'lg:px-4',
-          {
-            'ring-2 ring-green-700':
-              (isUser && !isMuted && isSpeaking) || (!isUser && isSpeaking),
-          }
-        )}
-      >
+    <div
+      ref={container}
+      className={clsx(
+        'mt-2 z-10 p-2 justify-between items-center rounded-lg shadow-sm bg-primary-200',
+        'sm:m-0',
+        'lg:px-4',
+        {
+          'fixed left-12 bottom-8 w-96': isUser,
+          'ring-2 ring-green-700':
+            (isUser && !isMuted && isSpeaking) || (!isUser && isSpeaking),
+        }
+      )}
+      onMouseEnter={() => setShowStatus(true)}
+      onMouseLeave={() => setShowStatus(false)}
+    >
+      {isUser && (
+        <div
+          className={clsx('block transition-all duration-75', {
+            'opacity-100': showStatus,
+            'opacity-0': !showStatus,
+          })}
+        >
+          <ClientStatus />
+        </div>
+      )}
+      <div className="flex items-center">
         <div className="flex items-center flex-1 min-w-0">
           <ClientAvatar
             client={client}
@@ -162,18 +184,18 @@ function ClientDisplay({ client, closeSession }) {
             closeSession={closeSession}
           />
         )}
-        {clientType === 'peer' && (
-          <audio
-            ref={audioRef}
-            className="hidden w-0 h-0"
-            controls={false}
-            muted
-            autoPlay
-            playsInline
-          />
-        )}
       </div>
-    </>
+      {clientType === 'peer' && (
+        <audio
+          ref={audioRef}
+          className="fixed hidden w-0 h-0"
+          controls={false}
+          muted
+          autoPlay
+          playsInline
+        />
+      )}
+    </div>
   );
 }
 

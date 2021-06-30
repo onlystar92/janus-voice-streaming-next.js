@@ -58,7 +58,7 @@ export default function ClientAvatar({ client, onClick, clientType }) {
         width="auto"
         height="auto"
       />
-      {!isSelf && not(client.muted) && (
+      {!isSelf && !client.muted && (
         <img className="absolute w-9/12" src="/mute.png" alt="Mute icon" />
       )}
       {!isSelf && client.muted && (

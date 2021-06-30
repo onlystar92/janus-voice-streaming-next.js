@@ -32,5 +32,9 @@ export default function RoomMediaPublisher() {
     return !isNil(peerConnection);
   }
 
-  return { start, stop, isRunning };
+  function getConnection() {
+    return peerConnection;
+  }
+
+  return { start, stop, isRunning, getConnection };
 }

@@ -18,10 +18,6 @@ const matchesClientUUID = (uuid) => propEq('uuid', uuid);
 
 const clients$ = new BehaviorSubject([]);
 
-clients$.subscribe((clients) => {
-  console.info('Clients changed:', clients);
-});
-
 // Default options to use when creating a client
 const defaultClientOptions = {
   uuid: undefined,

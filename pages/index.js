@@ -2,15 +2,17 @@ import ClientListView from 'components/client/client-list-view';
 import Footer from 'components/footer';
 import Navigation from 'components/navigation';
 import Head from 'next/head';
-import { setAudioContext } from 'observables/audio';
+import { audio$, setAudioContext } from 'observables/audio';
 import { user$ } from 'observables/user';
 import { prop } from 'ramda';
 import { useEffect, useState } from 'react';
-import { map, take } from 'rxjs/operators';
+import { map, pluck, take } from 'rxjs/operators';
 import { createAudioContext } from 'util/audio';
 import createJanusClient from 'util/janus/janus-client';
+import takeLatest from 'util/observable/take-latest';
 
 const userToken$ = user$.pipe(take(1), map(prop('token')));
+const audioContext$ = audio$.pipe(pluck('audioContext'));
 
 function Home() {
   const [janusClient, setJanusClient] = useState(null);
@@ -25,12 +27,22 @@ function Home() {
     setJanusClient(null);
   }
 
+  async function handleClickResume() {
+    const audioContext = await takeLatest(audioContext$);
+    if (audioContext.state !== 'suspended') return;
+    await audioContext.resume();
+  }
+
   useEffect(() => {
-    userToken$.subscribe((token) => {
+    async function initializeClient() {
+      const token = await takeLatest(userToken$);
+
       console.info('Token', token);
 
       if (!token) return;
-      if (janusClient && janusClient.isConnected()) janusClient.disconnect();
+      if (janusClient && janusClient.isConnected()) {
+        await janusClient.disconnect();
+      }
 
       console.info('Initializing voice client');
 
@@ -44,8 +56,16 @@ function Home() {
       client.connect();
       setJanusClient(client);
       console.info('Assigned janus client');
-    });
-    return closeSession;
+
+      // Resume audio context within user intereaction on the page
+      window.addEventListener('click', handleClickResume);
+    }
+
+    initializeClient();
+    return () => {
+      window.removeEventListener('click', handleClickResume);
+      closeSession();
+    };
   }, []);
 
   return (
@@ -58,22 +78,6 @@ function Home() {
         <Navigation />
         <ClientListView closeSession={closeSession} />
         <Footer />
-        <div className="fixed bottom-5 right-5 z-50 mt-2 p-2 px-2 flex flex-col justify-center items-center rounded-lg shadow-sm bg-primary-200 sm:m-0 lg:px-4">
-          <div
-            className="flex flex-row justify-center items-baseline h-12 w-20"
-            id="networkQuality"
-          >
-            <div className="flex-1 mx-1 h-1/5" />
-            <div className="flex-1 mx-1 h-2/5" />
-            <div className="flex-1 mx-1 h-3/5" />
-            <div className="flex-1 mx-1 h-4/5" />
-            <div className="flex-1 mx-1 h-full" />
-          </div>
-          <div
-            className="text-primary-text text-sm mt-2 text-center"
-            id="duration"
-          />
-        </div>
       </main>
     </div>
   );
