@@ -43,12 +43,12 @@ function setOutputVolume(volume) {
   applySetting({ outputVolume: volume });
 }
 
-function setInputDevice(device) {
-  applySetting({ preferredInput: device });
+function setInputDevice(inputDevice) {
+  applySetting({ inputDevice });
 }
 
-function setOutputDevice(device) {
-  applySetting({ preferredOutput: device });
+function setOutputDevice(outputDevice) {
+  applySetting({ outputDevice });
 }
 
 export {
