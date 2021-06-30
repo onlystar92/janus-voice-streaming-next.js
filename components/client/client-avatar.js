@@ -1,4 +1,3 @@
-import { not } from 'ramda';
 import { useEffect, useState } from 'react';
 
 function fetchUserAvatar(username) {
