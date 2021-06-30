@@ -1,11 +1,11 @@
 import { isNil, prop } from 'ramda';
 import { useEffect, useRef, useState } from 'react';
 import { audio$ } from 'observables/audio';
-import { distinct, map } from 'rxjs/operators';
+import { pluck } from 'rxjs/operators';
 import { useObservable } from 'rxjs-hooks';
 import Slider from './slider';
 
-const audioMeter$ = audio$.pipe(map(prop('audioMeter')), distinct());
+const audioMeter$ = audio$.pipe(pluck('audioMeter'));
 
 function SensitivityIndicator() {
   const audioMeter = useObservable(() => audioMeter$);

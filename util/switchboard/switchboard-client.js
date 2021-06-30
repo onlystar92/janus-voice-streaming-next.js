@@ -59,7 +59,7 @@ function updatePeerPosition(client, position) {
   // Don't update position if panner node is not initialized
   if (isNil(client.node)) return;
 
-  const { x, y, z } = position;
+  const { player: uuid, x, y, z } = position;
   const newNode = clone(client.node);
   const forwardVector = calculateForwardDirectionVector(position);
 
@@ -74,7 +74,7 @@ function updatePeerPosition(client, position) {
   newNode.orientationZ.value = forwardVector.z;
 
   // Update client node
-  // updateClient(uuid, { node: newNode });
+  updateClient(uuid, { node: newNode });
 }
 
 function initializeUserClient(uuid, token, room) {
