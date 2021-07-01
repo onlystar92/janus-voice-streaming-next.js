@@ -2,7 +2,7 @@ name: Deploy Master
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   # Allow the workflow to be manually executed
   workflow_dispatch:
 
@@ -16,25 +16,25 @@ jobs:
       - name: Copy repository contents
         uses: appleboy/scp-action@master
         env:
-            HOST: ${{ secrets.HOST }}
-            USERNAME: ${{ secrets.USERNAME }}
-            PORT: ${{ secrets.PORT }}
-            KEY: ${{ secrets.SSHKEY }}
+          HOST: ${{ secrets.HOST }}
+          USERNAME: ${{ secrets.USERNAME }}
+          PORT: ${{ secrets.PORT }}
+          KEY: ${{ secrets.SSHKEY }}
         with:
-            source: "."
-            target: "/var/www/velt-voice"            
+          source: '.'
+          target: '/var/www/velt-voice'
 
       - name: Deploy website
         uses: appleboy/ssh-action@master
         with:
-            HOST: ${{ secrets.HOST }}
-            USERNAME: ${{ secrets.USERNAME }}
-            PORT: ${{ secrets.PORT }}
-            KEY: ${{ secrets.SSHKEY }}
-            script: |
-              cd /var/www/velt-voice/
-              git clean -fxd
-              yarn install --frozen-lockfile --production --ignore-scripts --prefer-offline
-              yarn build
-              screen -S voice-site -X quit
-              screen -dmS voice-site yarn start
+          HOST: ${{ secrets.HOST }}
+          USERNAME: ${{ secrets.USERNAME }}
+          PORT: ${{ secrets.PORT }}
+          KEY: ${{ secrets.SSHKEY }}
+          script: |
+            cd /var/www/velt-voice/
+            git clean -fxd
+            yarn install --frozen-lockfile --ignore-scripts --prefer-offline
+            yarn build
+            screen -S voice-site -X quit
+            screen -dmS voice-site yarn start
