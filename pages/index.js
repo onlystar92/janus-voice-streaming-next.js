@@ -2,16 +2,22 @@ import ClientListView from 'components/client/client-list-view';
 import Footer from 'components/footer';
 import Navigation from 'components/navigation';
 import Head from 'next/head';
-import { audio$, setAudioContext } from 'observables/audio';
+import {
+  audio$,
+  setAudioContext,
+  setSwitchboardClient,
+} from 'observables/audio';
 import { user$ } from 'observables/user';
 import { prop } from 'ramda';
 import { useEffect, useState } from 'react';
+import { asyncScheduler } from 'rxjs';
 import { map, pluck, take } from 'rxjs/operators';
 import { createAudioContext } from 'util/audio';
 import createJanusClient from 'util/janus/janus-client';
 import takeLatest from 'util/observable/take-latest';
+import createSwitchboardClient from 'util/switchboard/switchboard-client';
 
-const userToken$ = user$.pipe(take(1), map(prop('token')));
+const userToken$ = user$.pipe(map(prop('token')));
 const audioContext$ = audio$.pipe(pluck('audioContext'));
 
 function Home() {
@@ -34,34 +40,44 @@ function Home() {
   }
 
   useEffect(() => {
-    async function initializeClient() {
-      const token = await takeLatest(userToken$);
+    console.info('Initializing voice client');
 
-      console.info('Token', token);
+    // Initialize audio context
+    console.info('Creating audio context');
+    const audioContext = createAudioContext();
+    setAudioContext(audioContext);
 
-      if (!token) return;
-      if (janusClient && janusClient.isConnected()) {
-        await janusClient.disconnect();
-      }
+    // Connect to switchboard
+    asyncScheduler.schedule(() => {
+      console.info('Connecting to switchboard client');
+      const switchboardClient = createSwitchboardClient();
+      setSwitchboardClient(switchboardClient);
+    });
 
-      console.info('Initializing voice client');
+    // Connect to janus
+    asyncScheduler.schedule(() => {
+      userToken$.pipe(take(1)).subscribe(async (token) => {
+        if (!token) {
+          console.info('No token provided. Skipping connection step.');
+          return;
+        }
 
-      // Initialize audio context
-      const audioContext = createAudioContext();
-      setAudioContext(audioContext);
-      console.info('Assigned audio context');
+        if (janusClient && janusClient.isConnected()) {
+          console.info('Disconnecting previous client');
+          await janusClient.disconnect();
+        }
 
-      // Connect and assign janus client
-      const client = createJanusClient(token);
-      client.connect();
-      setJanusClient(client);
-      console.info('Assigned janus client');
+        // Connect and assign janus client
+        console.info('Creating janus client');
+        const client = createJanusClient(token);
+        console.info('Connecting to janus');
+        client.connect();
+        setJanusClient(client);
 
-      // Resume audio context within user intereaction on the page
-      window.addEventListener('click', handleClickResume);
-    }
-
-    initializeClient();
+        // Resume audio context within user intereaction on the page
+        window.addEventListener('click', handleClickResume);
+      });
+    });
     return () => {
       window.removeEventListener('click', handleClickResume);
       closeSession();

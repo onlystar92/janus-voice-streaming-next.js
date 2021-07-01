@@ -5,10 +5,8 @@ import {
   setMediaListener,
   setMediaPublisher,
   setSession,
-  setSwitchboardClient,
 } from 'observables/audio';
 import takeLatest from 'util/observable/take-latest';
-import createSwitchboardClient from 'util/switchboard/switchboard-client';
 import RoomDataChannel from './room/room-data-channel';
 import RoomMediaListener from './room/room-media-listener';
 import RoomMediaPublisher from './room/room-media-publisher';
@@ -18,10 +16,6 @@ const handleConnect = (client) => async () => {
   console.info('Initializing client session');
   const session = await client.createSession();
   setSession(session);
-
-  console.info('Initializing switchboard client');
-  const switchboardClient = createSwitchboardClient();
-  setSwitchboardClient(switchboardClient);
 
   console.info('Initializing media listener and publisher');
   const mediaPublisher = new RoomMediaPublisher();

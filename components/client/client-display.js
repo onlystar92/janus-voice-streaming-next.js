@@ -5,7 +5,7 @@ import { equals, isNil, prop } from 'ramda';
 import { audio$ } from 'observables/audio';
 import { user$ } from 'observables/user';
 import { settings$ } from 'observables/settings';
-import { distinct, map, pluck } from 'rxjs/operators';
+import { distinctUntilChanged, map, pluck } from 'rxjs/operators';
 import { useObservable } from 'rxjs-hooks';
 import { findDeviceByLabel } from 'util/audio';
 import Slider from '../slider';
@@ -13,11 +13,20 @@ import ClientInput from './client-input';
 import ClientAvatar from './client-avatar';
 import ClientStatus from './client-status';
 
-const activeMuted$ = settings$.pipe(map(prop('muted')), distinct());
-const activeUUID$ = user$.pipe(map(prop('uuid')), distinct());
-const audioContext$ = audio$.pipe(map(prop('audioContext')), distinct());
-const outputVolume$ = settings$.pipe(pluck('outputVolume'), distinct());
-const outputDevice$ = settings$.pipe(pluck('outputDevice'), distinct());
+const activeMuted$ = settings$.pipe(map(prop('muted')), distinctUntilChanged());
+const activeUUID$ = user$.pipe(map(prop('uuid')), distinctUntilChanged());
+const audioContext$ = audio$.pipe(
+  map(prop('audioContext')),
+  distinctUntilChanged()
+);
+const outputVolume$ = settings$.pipe(
+  pluck('outputVolume'),
+  distinctUntilChanged()
+);
+const outputDevice$ = settings$.pipe(
+  pluck('outputDevice'),
+  distinctUntilChanged()
+);
 
 function ClientDisplay({ client, closeSession }) {
   const [isSpeaking, setIsSpeaking] = useState(false);

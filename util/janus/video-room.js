@@ -3,8 +3,6 @@ import { getMediaStream } from 'util/audio';
 import takeLatest from 'util/observable/take-latest';
 import createPeerConnection from 'util/create-peer-connection';
 
-const DEFAULT_CONSTRAINTS = { audio: true, video: false };
-
 async function listParticipants(room) {
   const { session } = await takeLatest(audio$);
   const handle = await session.videoRoom().defaultHandle();
@@ -27,127 +25,72 @@ function handleIceCandidate(handle, peerConnection) {
   };
 }
 
-async function publishClientMediaStream({
-  session,
-  uuid,
-  room,
-  token,
-  localDescription,
-}) {
-  const roomHandle = await session.videoRoom().defaultHandle();
-  const { id, jsep } = await roomHandle.publishFeed({
-    room,
-    token,
-    display: uuid,
-    jsep: localDescription,
-    audio: true,
-    video: false,
-  });
-  return { roomHandle, id, jsep };
-}
-
-async function publishAudioTracks(
-  userData,
-  session,
-  room,
-  constraints = DEFAULT_CONSTRAINTS
-) {
-  const { uuid, token } = userData;
-
-  // Get user media stream
-  const stream = await getMediaStream(constraints);
+async function publishAudioTracks({ uuid, token }, session, room) {
+  // Get user audio stream
+  const stream = await getMediaStream({ audio: true, video: false });
   const audioTrack = stream.getAudioTracks()[0];
 
-  // Create peer connection with audio tracks
+  // Initialize peer connection
   const peerConnection = createPeerConnection();
+  const publisherHandle = await session.videoRoom().defaultHandle();
   const trackSender = peerConnection.addTrack(audioTrack, stream);
 
   // Create peer connection offer
   const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
+  peerConnection.setLocalDescription(offer);
 
-  // Publish active client stream
-  const { roomHandle, id, jsep } = await publishClientMediaStream({
-    uuid,
+  // Publish client stream
+  const { id: publisherId, jsep } = await publisherHandle.publishFeed({
     room,
     token,
-    session,
-    localDescription: peerConnection.localDescription,
+    display: uuid,
+    jsep: offer,
+    audio: true,
+    video: false,
   });
+  peerConnection.setRemoteDescription(new RTCSessionDescription(jsep));
 
-  // Set received answer
-  const answer = new RTCSessionDescription(jsep);
-  await peerConnection.setRemoteDescription(answer);
+  // Configure track sender
+  const parameters = trackSender.getParameters();
+  const bitrate = 256;
+  parameters.encodings[0].maxBitrate = bitrate * 1000;
+  trackSender.setParameters(parameters);
 
   // Handle ice candidates
   peerConnection.onicecandidate = handleIceCandidate(
-    roomHandle,
+    publisherHandle,
     peerConnection
   );
 
-  return { id, peerConnection, trackSender };
+  return { publisherId, peerConnection, trackSender };
 }
 
-async function listenFeed(session, room, feed, onStreamReceive) {
-  let onConnect;
-  let onDisconnect;
-  let onClose;
-
+async function listenFeed(session, room, feed) {
   // Create peer connection
   const peerConnection = createPeerConnection();
 
-  // Handle connection state
-  peerConnection.onconnectionstatechange = async (event) => {
-    switch (peerConnection.connectionState) {
-      case 'connected':
-        await onConnect(event);
-        break;
-      case 'disconnected':
-      case 'failed':
-        await onDisconnect(event);
-        break;
-      case 'closed':
-        await onClose(event);
-        break;
-      default:
-        break;
-    }
-  };
-
-  // Handle track event
-  peerConnection.ontrack = onStreamReceive;
-
-  // Listen to feed
+  // Listen to remote feed
   const listenHandle = await session.videoRoom().listenFeed(room, feed);
+  const offer = listenHandle.getOffer();
+  peerConnection.setRemoteDescription(
+    new RTCSessionDescription({
+      type: 'offer',
+      sdp: offer,
+    })
+  );
+
+  // Create and assign answer
+  const answer = await peerConnection.createAnswer();
+  peerConnection.setLocalDescription(answer);
+  listenHandle.setRemoteAnswer(answer.sdp);
+
+  // Handle ice candidates
   peerConnection.onicecandidate = handleIceCandidate(
     listenHandle,
     peerConnection
   );
 
-  // Create offer
-  const offer = new RTCSessionDescription({
-    type: 'offer',
-    sdp: listenHandle.getOffer(),
-  });
-  peerConnection.setRemoteDescription(offer);
-
-  // Create answer
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
-  await listenHandle.setRemoteAnswer(answer.sdp);
-
-  return {
-    peerConnection,
-    onConnect(callback) {
-      onConnect = callback;
-    },
-    onDisconnect(callback) {
-      onDisconnect = callback;
-    },
-    onClose(callback) {
-      onClose = callback;
-    },
-  };
+  return { peerConnection, listenHandle };
 }
 
 export { publishAudioTracks, listenFeed, listParticipants };

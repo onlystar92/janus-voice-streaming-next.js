@@ -2,7 +2,6 @@ import {
   includes,
   not,
   prop,
-  equals,
   curry,
   isNil,
   isEmpty,
@@ -12,7 +11,7 @@ import {
 import { clearPeerClients } from 'observables/clients';
 import { user$ } from 'observables/user';
 import { addListening, audio$, removePending } from 'observables/audio';
-import { from, interval, throwError } from 'rxjs';
+import { from, interval } from 'rxjs';
 import {
   combineLatestWith,
   map,
@@ -29,10 +28,9 @@ const notListeningTo = (uuid, peerList) =>
   not(includes(uuid, peerList.listening));
 
 const filterParticipants = (participants, uuid, peerList) =>
-  participants.filter(
-    ({ display: participantUUID }) =>
-      not(equals(uuid, participantUUID)) &&
-      notListeningTo(participantUUID, peerList)
+  participants.filter(({ display: participantUUID }) =>
+    // not(equals(uuid, participantUUID)) &&
+    notListeningTo(participantUUID, peerList)
   );
 
 const listenToParticipant = curry(async (room, participant) => {
@@ -72,21 +70,14 @@ export default function RoomMediaListener() {
 
   async function start(room) {
     listener = interval(2000)
-      .pipe(
-        mergeMap(fetchNewParticipants(room)),
-        timeout({
-          each: 3000,
-          with: () => throwError(() => new Error('Timeout')),
-        })
-      )
+      .pipe(mergeMap(fetchNewParticipants(room)), timeout({ each: 10000 }))
       .subscribe({
         next: (participants) => {
-          // Only update local participants if they differ
-          if (participants !== localParticipants)
-            localParticipants = participants;
+          // Update local participants
+          localParticipants = participants;
 
           // Ignore if participants array is empty
-          if (isEmpty(participants)) return;
+          if (isEmpty(localParticipants)) return;
 
           console.info('Listening to particpants:', participants);
           participants.forEach(listenToParticipant(room));

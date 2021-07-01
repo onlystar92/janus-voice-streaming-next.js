@@ -24,6 +24,14 @@ function msToTime(duration) {
   return `${hours}:${minutes}:${seconds}`;
 }
 
+// https://tailwindcss.com/docs/optimizing-for-production#writing-purgeable-html
+const heightMappings = {
+  1: 'h-1/5',
+  2: 'h-2/5',
+  3: 'h-3/5',
+  4: 'h-4/5',
+};
+
 function ClientStatus() {
   const [duration, setDuration] = useState(msToTime(0));
   const [quality, setQuality] = useState([]);
@@ -69,7 +77,7 @@ function ClientStatus() {
     <div className="flex">
       <div className="flex flex-row justify-center items-baseline h-3 w-5">
         {range(1, 6).map((i) => {
-          const height = i < 5 ? `h-${i}/5` : 'h-full';
+          const height = i < 5 ? heightMappings[i] : 'h-full';
           const color = quality >= i ? 'bg-gray-300' : 'bg-gray-600';
           return <div key={i} className={`flex-1 m-px ${color} ${height}`} />;
         })}

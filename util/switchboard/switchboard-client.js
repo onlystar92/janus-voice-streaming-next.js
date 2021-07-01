@@ -9,8 +9,9 @@ import { addPending, audio$, setAudioContext } from 'observables/audio';
 import handleRoomChange from 'util/janus/room/room-change-handler';
 import { setDeafened, setMuted, settings$ } from 'observables/settings';
 import nextApply from 'util/observable/next-apply';
-import { combineLatestWith, filter, map, take } from 'rxjs/operators';
+import { map, pluck, take } from 'rxjs/operators';
 import { setUsername, user$ } from 'observables/user';
+import { forkJoin } from 'rxjs';
 import {
   calculateDistance,
   calculateForwardDirectionVector,
@@ -57,7 +58,7 @@ function updateUserPosition(position) {
 
 function updatePeerPosition(client, position) {
   // Don't update position if panner node is not initialized
-  if (isNil(client.node)) return;
+  if (!client || !client.node) return;
 
   const { player: uuid, x, y, z } = position;
   const newNode = clone(client.node);
@@ -101,9 +102,12 @@ function isWithinDistance(firstPosition, secondPosition) {
   );
 }
 
-const userUUID$ = user$.pipe(map(prop('uuid')));
-const dataChannel$ = audio$.pipe(map(prop('dataChannel')));
-const userSettings$ = settings$.pipe(map(props(['muted', 'deafened'])));
+const userUUID$ = user$.pipe(take(1), pluck('uuid'));
+const dataChannel$ = audio$.pipe(take(1), pluck('dataChannel'));
+const userSettings$ = settings$.pipe(
+  take(1),
+  map(props(['muted', 'deafened']))
+);
 
 function handleMessage(event) {
   let message = event.data;
@@ -160,6 +164,7 @@ function handleMessage(event) {
             if (!isWithinDistance(position, userPosition)) return;
 
             const { player: uuid, player_name: username } = position;
+
             clients$.pipe(take(1)).subscribe((clients) => {
               let currentClient = clients.find(
                 (client) => client.uuid === uuid
@@ -197,23 +202,18 @@ function handleMessage(event) {
       muted = muted === 'true'; // Convert to boolean
       deafened = deafened === 'true'; // Convert to boolean
 
-      dataChannel$
-        .pipe(
-          filter((channel) => channel.isOpen()),
-          take(1),
-          combineLatestWith([
-            userUUID$.pipe(take(1)),
-            userSettings$.pipe(take(1)),
-          ])
-        )
-        .subscribe(([dataChannel, uuid, settings]) => {
-          if (!dataChannel.isOpen()) return;
+      forkJoin([dataChannel$, userUUID$, userSettings$]).subscribe(
+        ([dataChannel, uuid, settings]) => {
+          if (!dataChannel || !dataChannel.isOpen()) {
+            setMuted(muted);
+            setDeafened(deafened);
+            return;
+          }
+
           const [currentMuted, currentDeafened] = settings;
 
           // Handle muted
-          // Validate that there's a change
           if (muted !== currentMuted) {
-            // Move the update to the status here
             dataChannel.sendDataMessage({ uuid, muted });
             setMuted(muted);
           }
@@ -223,7 +223,8 @@ function handleMessage(event) {
             dataChannel.sendDataMessage({ uuid, deafened });
             setDeafened(deafened);
           }
-        });
+        }
+      );
       break;
     }
     default:
