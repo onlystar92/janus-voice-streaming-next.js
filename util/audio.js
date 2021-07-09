@@ -12,7 +12,7 @@ function getMediaStream(constraints) {
 }
 
 function getDeviceMediaStream(device) {
-  return getMediaStream({ audio: { deviceId: device.deviceId } });
+  return getMediaStream({ audio: { deviceId: device.deviceId, noiseSupression: true} });
 }
 
 function createAudioContext() {
